@@ -11,8 +11,6 @@ This project aims to build an embedded system that monitors and records various 
 | **ESP32**                        | Main microcontroller (Wi-Fi + Bluetooth support)    |
 | **GPS Module (NEO-6M)**          | Collects GPS location, date/time, and vehicle speed |
 | **MPU-6050 (Accelerometer + Gyro)** | Measures 3-axis acceleration and movement            |
-| **Gyroscope included Angular velocity sensor** | Detects accelerator and brake pedal positions        |
-| **CAN Module**                   | connect sensors to the module                       |
 | **Micro SD Card Module**         | Logs all data locally for retrieval and analysis    |
 
 ---
@@ -20,10 +18,11 @@ This project aims to build an embedded system that monitors and records various 
 ## Features
 
 -  GPS tracking with timestamp
--  Real-time speed, acceleration, and pedal monitoring
+-  Real-time speed and acceleration monitoring
 -  Data fusion (GPS + accelerometer) for accurate speed calculation
 -  SD card logging with time-stamped entries
--  Optional GSM support for wireless log transmission
+-  Upload SD card data to cloud and analyze them in the cloud
+-  Show the driver records according to cloud data using a web app
 -  Modular code structure for easy component expansion
 
 ---
@@ -35,12 +34,16 @@ This project aims to build an embedded system that monitors and records various 
 2. **Data Acquisition**
    - Reads GPS location, speed, and time
    - Reads acceleration from MPU6050
-   - Reads analog/digital values from pedal and RPM sensors
 3. **Data Logging**
    - Combines data into a CSV format log
    - Appends to `log.txt` on SD card
-4. **Data Transmission** *(optional)*
-   - Sends data via Bluetooth Serial or GSM HTTP POST
+4. **Data Transmission** 
+   - Sends data via Bluetooth Serial or GSM HTTP POST *(optional)*
+   - Sends to cloud via Wi-Fi
+5. **Analysing data**
+   - Analyze data in the cloud and output useful informations
+6. **Dashboard for showing driver details**
+   - Showing the received data using web app dashboard
 
 ---
 
@@ -55,9 +58,8 @@ This project aims to build an embedded system that monitors and records various 
 ##  Getting Started
 
 ###  Wiring Overview
-- GPS → UART (e.g., RX2/TX2)
-- MPU6050 → SPI (through CAN module)
-- Gyro+Acceleration sensors → SPI (through CAN module)
+- GPS → UART (RX/TX)
+- MPU6050 → SPI 
 - SD Module → SPI (MISO, MOSI, SCK, CS)
 
 ## **Project Timeline**
