@@ -17,8 +17,16 @@
 #define SCK 18
 
 #define MAX_LINES 600
-
 #define GPS_BAUD 9600
+
+int count = 0;
+
+const char *ssid = "Dialog 4G 932";
+const char *password = "ssM@123987";
+const char *serverUrl = "https://your-server.com/upload";
+const char *filename = "/data.txt";
+const String mongodbstring = "mongodb+srv://ssasindu120:b8WUn44WwJFYgl2U@cluster0.82qxix2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const char *serverName = "http://192.168.8.116:3000/upload";
 
 TinyGPSPlus gps;
 MPU6050 mpu;
@@ -26,7 +34,8 @@ MPU6050 mpu;
 HardwareSerial gpsSerial(2);
 
 // Kalman filter
-class SimpleKalmanFilter {
+class SimpleKalmanFilter
+{
   float _err_measure;
   float _err_estimate;
   float _q;
@@ -34,60 +43,71 @@ class SimpleKalmanFilter {
   float _last_estimate;
   float _kalman_gain;
 
-  public:
-    SimpleKalmanFilter(float mea_e, float est_e, float q) {
-      _err_measure = mea_e;
-      _err_estimate = est_e;
-      _q = q;
-    }
+public:
+  SimpleKalmanFilter(float mea_e, float est_e, float q)
+  {
+    _err_measure = mea_e;
+    _err_estimate = est_e;
+    _q = q;
+  }
 
-    float updateEstimate(float mea) {
-      _kalman_gain = _err_estimate / (_err_estimate + _err_measure);
-      _current_estimate = _last_estimate + _kalman_gain * (mea - _last_estimate);
-      _err_estimate = (1.0 - _kalman_gain) * _err_estimate + fabs(_last_estimate - _current_estimate) * _q;
-      _last_estimate = _current_estimate;
-      return _current_estimate;
-    }
+  float updateEstimate(float mea)
+  {
+    _kalman_gain = _err_estimate / (_err_estimate + _err_measure);
+    _current_estimate = _last_estimate + _kalman_gain * (mea - _last_estimate);
+    _err_estimate = (1.0 - _kalman_gain) * _err_estimate + fabs(_last_estimate - _current_estimate) * _q;
+    _last_estimate = _current_estimate;
+    return _current_estimate;
+  }
 
-    void setMeasurementError(float mea_e) { _err_measure = mea_e; }
-    void setEstimateError(float est_e) { _err_estimate = est_e; }
-    void setProcessNoise(float q) { _q = q; }
+  void setMeasurementError(float mea_e) { _err_measure = mea_e; }
+  void setEstimateError(float est_e) { _err_estimate = est_e; }
+  void setProcessNoise(float q) { _q = q; }
 };
 
 // Functions for SD card write
-void readFile(fs::FS &fs, const char * path){
+void readFile(fs::FS &fs, const char *path)
+{
   Serial.printf("Reading file: %s\n", path);
 
   File file = fs.open(path);
-  if(!file){
+  if (!file)
+  {
     Serial.println("Failed to open file for reading");
     return;
   }
 
   Serial.print("Read from file: ");
-  while(file.available()){
+  while (file.available())
+  {
     Serial.write(file.read());
   }
   file.close();
 }
 
-void writeFile(fs::FS &fs, const char * path, const char * message){
+void writeFile(fs::FS &fs, const char *path, const char *message)
+{
   Serial.printf("Writing file: %s\n", path);
 
   File file = fs.open(path, FILE_WRITE);
-  if(!file){
+  if (!file)
+  {
     Serial.println("Failed to open file for writing");
     return;
   }
-  if(file.println(message)){
+  if (file.println(message))
+  {
     Serial.println("File written");
-  } else {
+  }
+  else
+  {
     Serial.println("Write failed");
   }
   file.close();
 }
 
-void logDataToSD(float ax, float ay, float az, float speed, String date, String time) {
+void logDataToSD(float ax, float ay, float az, float speed, String date, String time)
+{
   File file = SD.open("/data.txt", FILE_APPEND);
   StaticJsonDocument<200> doc;
   doc["date"] = date;
@@ -100,13 +120,101 @@ void logDataToSD(float ax, float ay, float az, float speed, String date, String 
   serializeJson(doc, json);
 
   // appendFile(SD, "/data.txt", json)
-  if (file) {
+  if (file)
+  {
     file.println(json);
     file.close();
     Serial.println("Data logged.");
-  } else {
+  }
+  else
+  {
     Serial.println("Failed to open file.");
   }
+}
+
+String readFileToJsonArray()
+{
+  File file = SD.open("/data.txt", FILE_READ);
+  if (!file)
+  {
+    Serial.println("Failed to open file");
+    return "";
+  }
+
+  String jsonPayload = "[";
+
+  while (file.available())
+  {
+    String line = file.readStringUntil('\n');
+    line.trim();
+    if (line.length() == 0)
+      continue;
+
+    bool first = true;
+    while (file.available())
+    {
+      String line = file.readStringUntil('\n');
+      line.trim();
+      if (line.length() > 0)
+      {
+        if (!first)
+          jsonPayload += ",";
+        jsonPayload += line;
+        first = false;
+      }
+    }
+  }
+  jsonPayload += "]";
+  file.close();
+
+  return jsonPayload;
+}
+
+void sendSDDataToServer()
+{
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.println("WiFi not connected");
+    return;
+  }
+
+  String jsonString = readFileToJsonArray();
+
+  HTTPClient http;
+  http.begin(serverName);
+  http.addHeader("Content-Type", "application/json");
+
+  int httpCode = http.POST(jsonString);
+  String response = http.getString();
+
+  Serial.print("Response code: ");
+  Serial.println(httpCode);
+  Serial.println("Response: " + response);
+
+  if (httpCode == 200)
+  {
+    if (response.indexOf("Data inserted") != -1)
+    {
+      writeFile(SD, "/data.txt", "User_1"); // Only if successfully inserted, Data cleared
+    }
+  }
+  http.end();
+}
+
+void connectWiFi()
+{
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConnected to WiFi!");
+  Serial.print("ESP32 IP: ");
+  Serial.println(WiFi.localIP());
 }
 
 SimpleKalmanFilter kf_ax(0.1, 0.1, 0.5);
@@ -115,41 +223,49 @@ SimpleKalmanFilter kf_az(0.1, 0.1, 0.5);
 
 SimpleKalmanFilter kf_speed(3, 3, 0.01);
 
-int count = 0;
-
-void setup(){
+void setup()
+{
   Serial.begin(GPS_BAUD);
+  connectWiFi();
 
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   Serial.println("Serial 2 started at 9600 baud rate");
 
   Wire.begin(I2C_SDA, I2C_SCL);
-  
+
   mpu.initialize();
 
-  if (mpu.testConnection()) {
+  if (mpu.testConnection())
+  {
     Serial.println("MPU6050 connected successfully!");
-  } else {
+  }
+  else
+  {
     Serial.println("MPU6050 connection failed!");
-    while (1); // Stop if failed
+    while (1)
+      ; // Stop if failed
   }
 
   // SD card accessing
-  if(!SD.begin(CS)){
+  if (!SD.begin(CS))
+  {
     Serial.println("Card Mount Failed");
   }
 
-  if (!SD.exists("/data.txt")) {
+  if (!SD.exists("/data.txt"))
+  {
     Serial.println("Creating new file...");
     writeFile(SD, "/data.txt", "User1");
   }
 
-  readFile(SD, "/data.txt");
+  String array = readFileToJsonArray();
+  Serial.print(array);
+  // readFile(SD, "/data.txt");
   // writeFile(SD, "/data.txt", "User1");
-
 }
 
-void loop(){
+void loop()
+{
 
   int16_t ax, ay, az;
   mpu.getAcceleration(&ax, &ay, &az);
@@ -157,13 +273,14 @@ void loop(){
   float ax_ms2 = (float)ax / 16384.0 * 9.80665;
   float ay_ms2 = (float)ay / 16384.0 * 9.80665;
   float az_ms2 = (float)az / 16384.0 * 9.80665;
-  
+
   // Apply Kalman filtering
   float filtered_ax = kf_ax.updateEstimate(ax_ms2);
   float filtered_ay = kf_ay.updateEstimate(ay_ms2);
   float filtered_az = kf_az.updateEstimate(az_ms2);
-  
-  while (gpsSerial.available() > 0) {
+
+  while (gpsSerial.available() > 0)
+  {
     gps.encode(gpsSerial.read());
   }
 
@@ -174,11 +291,13 @@ void loop(){
   minute += 30;
   hour += 5;
 
-  if (minute >= 60) {
+  if (minute >= 60)
+  {
     minute -= 60;
     hour += 1;
   }
-  if (hour >= 24) {
+  if (hour >= 24)
+  {
     hour -= 24;
   }
 
@@ -190,9 +309,16 @@ void loop(){
   String date = String(gps.date.year()) + "-" + String(gps.date.month()) + "-" + String(gps.date.day());
   String timeStr = timeBuffer;
 
+  if (date == "2000-0-0")
+    return;
+
   logDataToSD(filtered_ax, filtered_ay, filtered_az, filtered_speed, date, timeStr);
   count++;
+  if (count >= MAX_LINES)
+  {
+    sendSDDataToServer();
+    count = 0;
+  }
 
   delay(500);
 }
-
