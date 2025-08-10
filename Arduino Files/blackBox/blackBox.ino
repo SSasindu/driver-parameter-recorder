@@ -21,12 +21,13 @@
 
 int count = 0;
 
+const int deviceId = 13;
 const char *ssid = "Dialog 4G 932";
 const char *password = "ssM@123987";
-const char *serverUrl = "https://your-server.com/upload";
 const char *filename = "/data.txt";
 const String mongodbstring = "mongodb+srv://ssasindu120:b8WUn44WwJFYgl2U@cluster0.82qxix2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 const char *serverName = "http://192.168.8.116:3000/upload";
+const char *getServer = "http://192.168.8.116:3000/config/19";
 
 TinyGPSPlus gps;
 MPU6050 mpu;
@@ -201,6 +202,33 @@ void sendSDDataToServer()
   http.end();
 }
 
+void fetchConfig(String &ssid, String &password) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(getServer);
+    int httpCode = http.GET();
+
+    if (httpCode == 200) {
+      String payload = http.getString();
+      Serial.println("Received config: " + payload);
+
+      // Parse JSON
+      StaticJsonDocument<512> doc;
+      DeserializationError error = deserializeJson(doc, payload);
+      if (!error) {
+        ssid = doc["routerSSID"].as<String>();
+        password = doc["routerPassword"].as<String>();
+
+      } else {
+        Serial.println("JSON parse error");
+      }
+    } else {
+      Serial.println("Error on HTTP request: " + String(httpCode));
+    }
+    http.end();
+  }
+}
+
 void connectWiFi()
 {
   WiFi.begin(ssid, password);
@@ -227,6 +255,8 @@ void setup()
 {
   Serial.begin(GPS_BAUD);
   connectWiFi();
+
+  
 
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   Serial.println("Serial 2 started at 9600 baud rate");
