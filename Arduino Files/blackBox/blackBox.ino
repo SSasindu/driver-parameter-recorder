@@ -5,6 +5,8 @@
 #include "SD.h"
 #include "SPI.h"
 #include <ArduinoJson.h>
+#include <HTTPClient.h>
+#include <WiFiManager.h>
 
 #define RXD2 16
 #define TXD2 17
@@ -16,18 +18,17 @@
 #define MOSI 23
 #define SCK 18
 
-#define MAX_LINES 600
+#define MAX_LINES 400
 #define GPS_BAUD 9600
 
 int count = 0;
-
 const int deviceId = 13;
-const char *ssid = "Dialog 4G 932";
-const char *password = "ssM@123987";
+
+const char *ssid = "RedmiNote12";
+const char *password = "11111111";
 const char *filename = "/data.txt";
 const String mongodbstring = "mongodb+srv://ssasindu120:b8WUn44WwJFYgl2U@cluster0.82qxix2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 const char *serverName = "http://192.168.8.116:3000/upload";
-const char *getServer = "http://192.168.8.116:3000/config/19";
 
 TinyGPSPlus gps;
 MPU6050 mpu;
@@ -111,6 +112,7 @@ void logDataToSD(float ax, float ay, float az, float speed, String date, String 
 {
   File file = SD.open("/data.txt", FILE_APPEND);
   StaticJsonDocument<200> doc;
+  doc["deviceId"] = deviceId;
   doc["date"] = date;
   doc["time"] = time;
   doc["accX"] = ax;
@@ -156,13 +158,11 @@ String readFileToJsonArray()
     {
       String line = file.readStringUntil('\n');
       line.trim();
-      if (line.length() > 0)
-      {
-        if (!first)
-          jsonPayload += ",";
-        jsonPayload += line;
-        first = false;
-      }
+      if (line.length() == 0) continue;
+      
+      if (!first) jsonPayload += ",";
+      jsonPayload += line;
+      first = false;  
     }
   }
   jsonPayload += "]";
@@ -202,46 +202,34 @@ void sendSDDataToServer()
   http.end();
 }
 
-void fetchConfig(String &ssid, String &password) {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    http.begin(getServer);
-    int httpCode = http.GET();
 
-    if (httpCode == 200) {
-      String payload = http.getString();
-      Serial.println("Received config: " + payload);
+// void connectWiFi()
+// {
+//   WiFi.begin(ssid, password);
+//   Serial.print("Connecting to WiFi");
 
-      // Parse JSON
-      StaticJsonDocument<512> doc;
-      DeserializationError error = deserializeJson(doc, payload);
-      if (!error) {
-        ssid = doc["routerSSID"].as<String>();
-        password = doc["routerPassword"].as<String>();
+//   while (WiFi.status() != WL_CONNECTED)
+//   {
+//     delay(500);
+//     Serial.print(".");
+//   }
 
-      } else {
-        Serial.println("JSON parse error");
-      }
-    } else {
-      Serial.println("Error on HTTP request: " + String(httpCode));
-    }
-    http.end();
-  }
-}
+//   Serial.println("\nConnected to WiFi!");
+//   Serial.print("ESP32 IP: ");
+//   Serial.println(WiFi.localIP());
+// }
 
-void connectWiFi()
-{
-  WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi");
+void createAccessPoint(){
+  WiFiManager wm;
 
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
+  // Try to connect, if fails, start AP mode with config portal
+  if (!wm.autoConnect("ESP32_ConfigAP", "12345678")) {
+    Serial.println("Failed to connect and hit timeout");
+    ESP.restart();
   }
 
-  Serial.println("\nConnected to WiFi!");
-  Serial.print("ESP32 IP: ");
+  Serial.println("Connected to Wi-Fi!");
+  Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 }
 
@@ -254,9 +242,8 @@ SimpleKalmanFilter kf_speed(3, 3, 0.01);
 void setup()
 {
   Serial.begin(GPS_BAUD);
-  connectWiFi();
-
-  
+  createAccessPoint();
+  // connectWiFi();
 
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   Serial.println("Serial 2 started at 9600 baud rate");
@@ -285,11 +272,11 @@ void setup()
   if (!SD.exists("/data.txt"))
   {
     Serial.println("Creating new file...");
-    writeFile(SD, "/data.txt", "User1");
+    writeFile(SD, "/data.txt", "");
   }
 
-  String array = readFileToJsonArray();
-  Serial.print(array);
+  // String array = readFileToJsonArray();
+  // Serial.print(array);
   // readFile(SD, "/data.txt");
   // writeFile(SD, "/data.txt", "User1");
 }
