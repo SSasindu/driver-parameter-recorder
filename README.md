@@ -74,11 +74,11 @@ This project aims to build an embedded system that monitors and records various 
 | 3    | Integrate sensors with ESP32 and test basic data collection             |
 | 4    | Develop logics for threshold values and implement                       |
 | 5    | Combine all modules into single embedded system, start debugging        |
-| 6    | Test system in simulated and real environments                          |
+| 6    | Build the web app and test the whole system                             |
 | 7    | Test system in simulated and real environments                          |
 | 8    | Setting threshold values which are suitable for a good driver according to tests|
-| 9    | Test threshold values in simulated and real environments                |
-| 10   | Test threshold values in simulated and real environments                |
+| 9    | Test and update threshold values in simulated and real environments     |
+| 10   | Test and update threshold values in simulated and real environments     |
 | 11   | Finalize documentation (README, diagrams, user manual)                  |
 | 12   | Create presentation/demo and submit final project                       |
 
