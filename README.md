@@ -58,13 +58,6 @@ This project aims to build an embedded system that monitors and records various 
 
 ---
 
-##  Getting Started
-
-###  Wiring Overview
-- GPS → UART (RX/TX)
-- MPU6050 → I2C (SDA, SCL)
-- SD Module → SPI (MISO, MOSI, SCK, CS)
-
 ## **Project Timeline**
 
 | Week | Task                                                                    |
@@ -74,11 +67,11 @@ This project aims to build an embedded system that monitors and records various 
 | 3    | Integrate sensors with ESP32 and test basic data collection             |
 | 4    | Develop logics for threshold values and implement                       |
 | 5    | Combine all modules into single embedded system, start debugging        |
-| 6    | Build the web app and test the whole system                             |
-| 7    | Test system in simulated and real environments                          |
-| 8    | Setting threshold values which are suitable for a good driver according to tests|
-| 9    | Test and update threshold values in simulated and real environments     |
-| 10   | Test and update threshold values in simulated and real environments     |
+| 6    | Implement Wi-Fi communication and test sending sensor data to cloud database (MongoDB)|
+| 7    | Build the web app and test the whole system                             |
+| 8    | Test system in controlled environments (short trips)                    |
+| 9    | Setting threshold values which are suitable for a good driver according to tests|
+| 10   | Test and refine thresholds in real driving environments, update logic based on results|
 | 11   | Finalize documentation (README, diagrams, user manual)                  |
 | 12   | Create presentation/demo and submit final project                       |
 
