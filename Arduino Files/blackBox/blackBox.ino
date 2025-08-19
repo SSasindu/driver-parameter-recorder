@@ -14,9 +14,9 @@
 #define I2C_SCL 21
 
 #define CS 5
-#define MISO 19
-#define MOSI 23
-#define SCK 18
+#define MISO 19 //12
+#define MOSI 23 //13
+#define SCK 18 //14
 
 #define MAX_LINES 400
 #define GPS_BAUD 9600
@@ -201,23 +201,6 @@ void sendSDDataToServer()
   }
   http.end();
 }
-
-
-// void connectWiFi()
-// {
-//   WiFi.begin(ssid, password);
-//   Serial.print("Connecting to WiFi");
-
-//   while (WiFi.status() != WL_CONNECTED)
-//   {
-//     delay(500);
-//     Serial.print(".");
-//   }
-
-//   Serial.println("\nConnected to WiFi!");
-//   Serial.print("ESP32 IP: ");
-//   Serial.println(WiFi.localIP());
-// }
 
 void createAccessPoint(){
   WiFiManager wm;
