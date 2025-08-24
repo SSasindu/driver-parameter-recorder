@@ -10,9 +10,9 @@ export async function POST(request: NextRequest) {
     try {
         await connectDB();
 
-        const { firstName, lastName, deviceId, password } = await request.json();
+        const { firstName, deviceId, email, password } = await request.json();
 
-        if (!firstName || !lastName || !deviceId || !password) {
+        if (!firstName || !deviceId || !email || !password) {
             return NextResponse.json(
                 { message: 'All fields are required' },
                 { status: 400 }
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if user already exists (using deviceId as email for now)
-        const existingUser = await User.findOne({ email: deviceId });
+        const existingUser = await User.findOne({ deviceId: deviceId });
         if (existingUser) {
             return NextResponse.json(
                 { message: 'Device ID already exists' },
@@ -33,8 +33,9 @@ export async function POST(request: NextRequest) {
 
         // Create new user
         const newUser = new User({
-            email: deviceId,
-            name: `${firstName} ${lastName}`,
+            deviceId: deviceId,
+            name: firstName,
+            email: email,
             password: hashedPassword,
         });
 
@@ -49,9 +50,9 @@ export async function POST(request: NextRequest) {
 
         const userResponse = {
             id: newUser._id,
-            firstName,
-            lastName,
-            deviceId: newUser.email,
+            firstName: newUser.name,
+            email: newUser.email,
+            deviceId: newUser.deviceId,
             createdAt: newUser.createdAt,
         };
 

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
         await connectDB();
 
-        const user = await User.findById(decoded.userId);
+        const user = await User.findById(decoded.deviceId);
 
         if (!user) {
             return NextResponse.json(
@@ -35,16 +35,11 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Extract first and last name from the stored name
-        const nameParts = user.name.split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-
         const userResponse = {
             id: user._id,
-            firstName,
-            lastName,
-            deviceId: user.email,
+            firstName: user.name,
+            email: user.email,
+            deviceId: user.deviceId,
             createdAt: user.createdAt,
         };
 

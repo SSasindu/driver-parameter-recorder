@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const user = await User.findOne({ email: deviceId });
+        const user = await User.findOne({ deviceId: deviceId });
 
         if (!user) {
             return NextResponse.json(
@@ -43,16 +43,11 @@ export async function POST(request: NextRequest) {
             { expiresIn: '24h' }
         );
 
-        // Extract first and last name from the stored name
-        const nameParts = user.name.split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-
         const userResponse = {
             id: user._id,
-            firstName,
-            lastName,
-            deviceId: user.email,
+            firstName: user.name,
+            email: user.email,
+            deviceId: user.deviceId,
             createdAt: user.createdAt,
         };
 

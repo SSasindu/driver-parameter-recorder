@@ -1,7 +1,7 @@
 export interface User {
     id: string;
     firstName: string;
-    lastName: string;
+    email: string;
     deviceId: string;
     createdAt: string;
 }
@@ -13,7 +13,7 @@ export interface LoginCredentials {
 
 export interface SignupData {
     firstName: string;
-    lastName: string;
+    email: string;
     deviceId: string;
     password: string;
 }

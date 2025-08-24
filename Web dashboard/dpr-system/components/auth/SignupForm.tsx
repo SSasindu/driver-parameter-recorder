@@ -11,8 +11,8 @@ interface SignupFormProps {
 export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
     const [formData, setFormData] = useState({
         firstName: '',
-        lastName: '',
         deviceId: '',
+        email: '',
         password: '',
         confirmPassword: ''
     });
@@ -25,10 +25,17 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
         e.preventDefault();
         setError('');
 
-        const { firstName, lastName, deviceId, password, confirmPassword } = formData;
+        const { firstName, deviceId, email, password, confirmPassword } = formData;
 
-        if (!firstName || !lastName || !deviceId || !password || !confirmPassword) {
+        if (!firstName || !deviceId || !email || !password || !confirmPassword) {
             setError('Please fill in all fields');
+            return;
+        }
+
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            setError('Please enter a valid email address');
             return;
         }
 
@@ -43,7 +50,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
         }
 
         try {
-            await signup({ firstName, lastName, deviceId, password });
+            await signup({ firstName, deviceId, email, password });
         } catch (err: unknown) {
             const error = err as { response?: { data?: { message?: string } } };
             setError(error.response?.data?.message || 'Signup failed. Please try again.');
@@ -75,36 +82,34 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
                     )}
 
                     <div className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                                    First Name
-                                </label>
-                                <input
-                                    id="firstName"
-                                    type="text"
-                                    value={formData.firstName}
-                                    onChange={(e) => handleInputChange('firstName', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                                    placeholder="John"
-                                    disabled={isLoading}
-                                />
-                            </div>
+                        <div>
+                            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                                First Name
+                            </label>
+                            <input
+                                id="firstName"
+                                type="text"
+                                value={formData.firstName}
+                                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                                placeholder="John"
+                                disabled={isLoading}
+                            />
+                        </div>
 
-                            <div>
-                                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Last Name
-                                </label>
-                                <input
-                                    id="lastName"
-                                    type="text"
-                                    value={formData.lastName}
-                                    onChange={(e) => handleInputChange('lastName', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                                    placeholder="Doe"
-                                    disabled={isLoading}
-                                />
-                            </div>
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                                Email Address
+                            </label>
+                            <input
+                                id="email"
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) => handleInputChange('email', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                                placeholder="john@example.com"
+                                disabled={isLoading}
+                            />
                         </div>
 
                         <div>

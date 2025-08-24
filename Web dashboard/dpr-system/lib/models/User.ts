@@ -1,15 +1,16 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IUser extends Document {
-    email: string;
+    deviceId: string;
     password: string;
     name: string;
+    email: string;
     createdAt: Date;
     updatedAt: Date;
 }
 
 const UserSchema = new Schema<IUser>({
-    email: {
+    deviceId: {
         type: String,
         required: true,
         unique: true,
@@ -26,6 +27,13 @@ const UserSchema = new Schema<IUser>({
         required: true,
         trim: true,
     },
+    email: {
+        type: String,
+        required: false,
+        unique: true,
+        lowercase: true,
+        trim: true,
+    }
 }, {
     timestamps: true,
 });

@@ -46,8 +46,8 @@ export const Dashboard: React.FC = () => {
                                 <p className="mt-1 text-sm text-gray-900">{user?.firstName}</p>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Last Name</label>
-                                <p className="mt-1 text-sm text-gray-900">{user?.lastName}</p>
+                                <label className="block text-sm font-medium text-gray-700">Email</label>
+                                <p className="mt-1 text-sm text-gray-900">{user?.email}</p>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Device ID</label>

@@ -38,14 +38,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
                 <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                         <span className="text-blue-600 font-semibold text-sm">
-                            {user?.firstName?.[0]}{user?.lastName?.[0]}
+                            {user?.firstName?.[0]}{user?.email?.[0]}
                         </span>
                     </div>
                     <div>
                         <p className="text-sm font-medium text-gray-900">
-                            {user?.firstName} {user?.lastName}
+                            {user?.firstName}
                         </p>
-                        <p className="text-xs text-gray-500">Device: {user?.deviceId}</p>
+                        <p className="text-xs text-gray-500">{user?.email}</p>
                     </div>
                 </div>
             </div>
