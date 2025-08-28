@@ -31,7 +31,6 @@ export interface DrivingRecord {
     time: string;
     speed: number;
     acceleration: number;
-    timestamp: string;
 }
 
 export interface HourlyData {

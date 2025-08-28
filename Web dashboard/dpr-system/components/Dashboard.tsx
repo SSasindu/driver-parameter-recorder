@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+// import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { ScoreCard } from '@/components/dashboard/ScoreCard';
 import { LiveMetrics } from '@/components/dashboard/LiveMetrics';
@@ -9,14 +9,46 @@ import { Charts } from '@/components/dashboard/Charts';
 import { RecentRecords } from '@/components/dashboard/RecentRecords';
 import { generateMockData } from '@/lib/utils';
 import { Menu } from 'lucide-react';
+import { useParams } from 'next/navigation';
+// import router from 'next/dist/shared/lib/router/router';
 
 export const Dashboard: React.FC = () => {
-    const { user } = useAuth();
+    const params = useParams();
+    const [user, setUser] = useState({
+        id: '',
+        firstName: '',
+        email: '',
+        deviceId: '',
+        createdAt: ''
+    });
     const [activeTab, setActiveTab] = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    // const [isLoading, setIsLoading] = useState(true);
 
     // Using mock data for now - replace with API call
     const dashboardData = generateMockData();
+
+    useEffect(() => {
+        // Get userId from dynamic route parameter
+        const userId = params.userId as string;
+        
+        if (userId) {
+            // Fetch user data based on userId or get from storage
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                if (userData.id === userId) {
+                    setUser({
+                        id: userData.id,
+                        firstName: userData.name || userData.firstName,
+                        email: userData.email,
+                        deviceId: userData.deviceId || userData.id,
+                        createdAt: userData.createdAt || new Date().toISOString()
+                    });
+                }
+            }
+        }
+    }, [params]);
 
     const renderContent = () => {
         switch (activeTab) {

@@ -1,4 +1,4 @@
-import { ScoreColor } from '@/types';
+import { DashboardData, ScoreColor } from '@/types';
 
 export const getScoreColor = (score: number): ScoreColor => {
     if (score >= 80) return 'green';
@@ -70,6 +70,65 @@ export const generateMockData = () => {
             acceleration: (Math.random() - 0.5) * 4, // -2 to +2 m/s²
             date: currentDate,
             time: currentTime
+        },
+        recentRecords,
+        hourlyData
+    };
+};
+
+export const transformDrivingRecords = (records: any[]): DashboardData => {
+    const speeds = records.map(r => r.speed || 0).filter(s => s > 0);
+    const accelerations = records.map(r => Math.sqrt(Math.pow(r.accX, 2)+Math.pow(r.accY, 2)+Math.pow(r.accZ, 2)));
+
+    const avgSpeed = speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : 0;
+    const maxSpeed = speeds.length > 0 ? Math.max(...speeds) : 0;
+    const avgAcceleration = accelerations.length > 0 ? accelerations.reduce((a, b) => a + b, 0) / accelerations.length : 0;
+
+    // Calculate driving score (simplified algorithm)
+    let score = 85; // Base score
+    if (maxSpeed > 80) score -= 10; // Speed penalty
+    if (avgAcceleration > 3) score -= 5; // Harsh acceleration penalty
+    if (avgAcceleration < -3) score -= 5; // Harsh braking penalty
+    score = Math.max(0, Math.min(100, score));
+
+    // Get recent records for display
+    const recentRecords = records.slice(0, 10).map(record => ({
+        id: record.id,
+        date: record.date,
+        time: record.time,
+        speed: record.speed || 0,
+        acceleration: Math.sqrt(Math.pow(record.accX, 2) + Math.pow(record.accY, 2) + Math.pow(record.accZ, 2)) || 0
+    }));
+
+    // Generate hourly data (simplified)
+    const hourlyData = [];
+    for (let i = 0; i < 24; i++) {
+        const hourRecords = records.filter(r => {
+            if (!r.timestamp) return false;
+            const hour = new Date(r.timestamp).getHours();
+            return hour === i;
+        });
+
+        const avgHourSpeed = hourRecords.length > 0 ?
+            hourRecords.reduce((sum, r) => sum + (r.speed || 0), 0) / hourRecords.length : 0;
+        const avgHourAccel = hourRecords.length > 0 ?
+            hourRecords.reduce((sum, r) => sum + (r.acceleration || 0), 0) / hourRecords.length : 0;
+
+        hourlyData.push({
+            hour: `${i.toString().padStart(2, '0')}:00`,
+            avgSpeed: Math.round(avgHourSpeed * 10) / 10,
+            maxSpeed: Math.round((hourRecords.length > 0 ? Math.max(...hourRecords.map(r => r.speed || 0)) : 0) * 10) / 10,
+            avgAcceleration: Math.round(avgHourAccel * 10) / 10
+        });
+    }
+
+    return {
+        overallScore: score,
+        currentMetrics: {
+            speed: Math.round(avgSpeed * 10) / 10,
+            acceleration: Math.round(avgAcceleration * 10) / 10,
+            date: records[0]?.date || new Date().toLocaleDateString(),
+            time: records[0]?.time || new Date().toLocaleTimeString()
         },
         recentRecords,
         hourlyData

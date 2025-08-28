@@ -13,6 +13,12 @@ export async function GET() {
             },
             upload: {
                 post: "/api/upload - Upload sensor data array"
+            },
+            dashboard: {
+                get: "/api/dashboard/[deviceId] - Get dashboard data by device ID"
+            },
+            drivingRecords: {
+                get: "/api/driving-records/[deviceId] - Get driving records by device ID"
             }
         },
         note: "Next.js API implementation of ESP32-mongo-API server functionality"

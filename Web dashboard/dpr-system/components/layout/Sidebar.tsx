@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Car, BarChart3, Database, LogOut, User } from 'lucide-react';
+import { Car, BarChart3, Database, User, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { logout } from '@/lib/auth';
 
 interface SidebarProps {
     activeTab: string;
@@ -10,13 +11,17 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
-    const { user, logout } = useAuth();
+    const router = useRouter();
 
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
         { id: 'records', label: 'Driving Records', icon: Database },
         { id: 'profile', label: 'Profile', icon: User }
     ];
+
+    const handleLogout = () => {
+        logout();
+    };
 
     return (
         <div className="bg-white shadow-lg h-full flex flex-col">
@@ -28,24 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
                     </div>
                     <div>
                         <h1 className="text-lg font-semibold text-gray-900">DPR System</h1>
-                        <p className="text-sm text-gray-500">Driver Dashboard</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* User Info */}
-            <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-semibold text-sm">
-                            {user?.firstName?.[0]}{user?.email?.[0]}
-                        </span>
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-900">
-                            {user?.firstName}
-                        </p>
-                        <p className="text-xs text-gray-500">{user?.email}</p>
+                        <p className="text-sm text-gray-500">Driver Parameter Recorder</p>
                     </div>
                 </div>
             </div>
@@ -73,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             {/* Logout */}
             <div className="p-4 border-t border-gray-200">
                 <button
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="w-full flex items-center space-x-3 px-4 py-3 text-left rounded-lg text-red-600 hover:bg-red-50 transition-colors"
                 >
                     <LogOut className="w-5 h-5" />

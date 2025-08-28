@@ -1,57 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/mongodb';
-import User from '@/lib/models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-interface JWTPayload {
-    userId: string;
-    deviceId: string;
-}
-
-export async function GET(request: NextRequest) {
-    const authHeader = request.headers.get('authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return NextResponse.json(
-            { message: 'Authorization token required' },
-            { status: 401 }
-        );
-    }
-
-    const token = authHeader.substring(7);
-
+export async function POST(request: NextRequest) {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-        await connectDB();
+        const { token } = await request.json();
 
-        const user = await User.findById(decoded.deviceId);
-
-        if (!user) {
-            return NextResponse.json(
-                { message: 'User not found' },
-                { status: 404 }
-            );
+        if (!token) {
+            return NextResponse.json({
+                error: 'Token is required'
+            }, { status: 400 });
         }
 
-        const userResponse = {
-            id: user._id,
-            firstName: user.name,
-            email: user.email,
-            deviceId: user.deviceId,
-            createdAt: user.createdAt,
+        // Verify the token
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+        // Connect to MongoDB to get fresh user data
+        const mongoose = await connectDB();
+        const db = mongoose.connection.getClient().db("vehicleDB");
+        const usersCollection = db.collection("Users");
+
+        // Find user by ID to ensure they still exist
+        const user = await usersCollection.findOne({
+            deviceId: decoded.deviceId
+        });
+
+        if (!user) {
+            return NextResponse.json({
+                error: 'User not found'
+            }, { status: 404 });
+        }
+
+        // Return user data (excluding password)
+        const { password, ...safeUserData } = user;
+        const userData = {
+            id: safeUserData._id,
+            firstName: safeUserData.firstName,
+            email: safeUserData.email || '',
+            deviceId: safeUserData.deviceId,
+            createdAt: safeUserData.createdAt
         };
 
         return NextResponse.json({
-            user: userResponse,
-            valid: true
-        });
-    } catch (error) {
+            valid: true,
+            user: userData
+        }, { status: 200 });
+
+    } catch (error: any) {
         console.error('Token verification error:', error);
-        return NextResponse.json(
-            { message: 'Invalid token', valid: false },
-            { status: 401 }
-        );
+
+        if (error.name === 'JsonWebTokenError') {
+            return NextResponse.json({
+                error: 'Invalid token'
+            }, { status: 401 });
+        }
+
+        if (error.name === 'TokenExpiredError') {
+            return NextResponse.json({
+                error: 'Token expired'
+            }, { status: 401 });
+        }
+
+        return NextResponse.json({
+            error: 'Token verification failed'
+        }, { status: 500 });
     }
 }

@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Car } from 'lucide-react';
+import axios from 'axios';
+import { useRouter } from 'next/navigation';
+import { setAuthData } from '@/lib/auth';
 
 interface LoginFormProps {
     onSwitchToSignup: () => void;
@@ -13,22 +15,47 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
-    const { login, isLoading } = useAuth();
+    const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setIsLoading(true);
 
         if (!deviceId || !password) {
             setError('Please fill in all fields');
+            setIsLoading(false);
             return;
         }
 
         try {
-            await login({ deviceId, password });
-        } catch (err: unknown) {
-            const error = err as { response?: { data?: { message?: string } } };
-            setError(error.response?.data?.message || 'Login failed. Please try again.');
+            // const configResponse = await axios.get(`/api/config/${deviceId}`);
+
+            // if (configResponse.data) {
+            // Try to login using the api/config endpoint which handles password verification
+            const loginResponse = await axios.post(`/api/config/${deviceId}`, {
+                password
+            });
+
+            if (loginResponse.data.token && loginResponse.data.user) {
+                // Store token and user info using auth utility
+                setAuthData(loginResponse.data.token, loginResponse.data.user);
+
+                // Redirect to dashboard
+                router.push('/dashboard');
+            } else {
+                setError('Login failed. Invalid response from server.');
+            }
+            // }
+        } catch (err: any) {
+            if (err.response?.status === 404) {
+                setError('Device ID not found. Please check your device ID or sign up.');
+            } else {
+                setError(err.response?.data?.message || 'Login failed. Please try again.');
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 

@@ -1,14 +1,49 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { SignupForm } from '@/components/auth/SignupForm';
-import { Dashboard } from '@/components/Dashboard';
+import axios from 'axios';
 
 const AuthWrapper: React.FC = () => {
-    const { user, isLoading } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
+
+    useEffect(() => {
+        const checkAuthentication = async () => {
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                // Verify token with the server
+                const response = await axios.post('/api/auth/verify', { token });
+
+                if (response.data.valid) {
+                    // Token is valid, redirect to dashboard
+                    router.push('/dashboard');
+                } else {
+                    // Invalid token, clear storage
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setIsLoading(false);
+                }
+            } catch (error) {
+                console.error('Token verification failed:', error);
+                // Clear invalid token
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                setIsLoading(false);
+            }
+        };
+
+        checkAuthentication();
+    }, [router]);
 
     if (isLoading) {
         return (
@@ -16,10 +51,6 @@ const AuthWrapper: React.FC = () => {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
         );
-    }
-
-    if (user) {
-        return <Dashboard />;
     }
 
     return isLogin ? (

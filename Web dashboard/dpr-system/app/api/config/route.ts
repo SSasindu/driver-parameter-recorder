@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/mongodb';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export async function POST(request: NextRequest) {
     try {
         // Parse the incoming JSON data
         const configData = await request.json();
+        console.log('Received configuration data:', configData);
 
         // Handle both ESP32 config format and web dashboard format
         let userData;
@@ -13,7 +17,7 @@ export async function POST(request: NextRequest) {
 
         if (configData.firstName && configData.password) {
             // Web dashboard format
-            const { firstName, deviceId: devId, password } = configData;
+            const { firstName, deviceId: devId, email, password } = configData;
             deviceId = devId;
 
             // Validate required fields
@@ -36,18 +40,12 @@ export async function POST(request: NextRequest) {
             userData = {
                 firstName,
                 deviceId: parseInt(deviceId),
+                email: email || '', // Store email if provided
                 password: hashedPassword,
                 createdAt: new Date(),
                 updatedAt: new Date()
             };
         } else {
-            // ESP32 format - direct config data (similar to original server.js)
-            if (!configData || typeof configData !== 'object') {
-                return NextResponse.json({
-                    error: 'Configuration data must be a JSON object'
-                }, { status: 400 });
-            }
-
             deviceId = configData.deviceId;
             userData = {
                 ...configData,
@@ -81,10 +79,28 @@ export async function POST(request: NextRequest) {
 
         console.log(`Configuration saved with ID: ${result.insertedId}`);
 
+        const token = jwt.sign(
+                        {
+                            userId: configData._id,
+                            deviceId: configData.deviceId,
+                            firstName: configData.firstName
+                        },
+                        JWT_SECRET,
+                        { expiresIn: '24h' }
+                    );
+        
+        const user = {
+            id: configData._id,
+            firstName: configData.firstName,
+            email: configData.email || '',
+            deviceId: configData.deviceId,
+            createdAt: configData.createdAt
+        };
+
         return NextResponse.json({
             message: configData.firstName ? 'User configuration saved successfully' : 'Configuration saved successfully',
-            id: result.insertedId,
-            deviceId: userData.deviceId
+            token,
+            user
         }, { status: 200 });
 
     } catch (error: any) {

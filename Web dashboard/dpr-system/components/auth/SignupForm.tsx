@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Car } from 'lucide-react';
+import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
 interface SignupFormProps {
     onSwitchToLogin: () => void;
@@ -19,16 +20,19 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
-    const { signup, isLoading } = useAuth();
+    const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setIsLoading(true);
 
         const { firstName, deviceId, email, password, confirmPassword } = formData;
 
         if (!firstName || !deviceId || !email || !password || !confirmPassword) {
             setError('Please fill in all fields');
+            setIsLoading(false);
             return;
         }
 
@@ -36,24 +40,42 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             setError('Please enter a valid email address');
+            setIsLoading(false);
             return;
         }
 
         if (password !== confirmPassword) {
             setError('Passwords do not match');
+            setIsLoading(false);
             return;
         }
 
         if (password.length < 6) {
             setError('Password must be at least 6 characters long');
+            setIsLoading(false);
             return;
         }
 
         try {
-            await signup({ firstName, deviceId, email, password });
-        } catch (err: unknown) {
-            const error = err as { response?: { data?: { message?: string } } };
-            setError(error.response?.data?.message || 'Signup failed. Please try again.');
+            // Create user account via config endpoint
+            const response = await axios.post('/api/config', {
+                firstName,
+                deviceId,
+                email,
+                password
+            });
+
+            if (response.data.token && response.data.user) {
+                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('user', JSON.stringify(response.data.user));
+
+                // Redirect to dashboard
+                router.push('/dashboard');
+            }
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Signup failed. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
