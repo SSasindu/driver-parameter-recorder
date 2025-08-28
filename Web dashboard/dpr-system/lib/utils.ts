@@ -1,4 +1,4 @@
-import { DashboardData, ScoreColor } from '@/types';
+import { DashboardData, DrivingRecord, ScoreColor } from '@/types';
 
 export const getScoreColor = (score: number): ScoreColor => {
     if (score >= 80) return 'green';
@@ -76,7 +76,7 @@ export const generateMockData = () => {
     };
 };
 
-export const transformDrivingRecords = (records: any[]): DashboardData => {
+export const transformDrivingRecords = (records: DrivingRecord[]): DashboardData => {
     const speeds = records.map(r => r.speed || 0).filter(s => s > 0);
     const accelerations = records.map(r => Math.sqrt(Math.pow(r.accX, 2)+Math.pow(r.accY, 2)+Math.pow(r.accZ, 2)));
 
@@ -104,15 +104,15 @@ export const transformDrivingRecords = (records: any[]): DashboardData => {
     const hourlyData = [];
     for (let i = 0; i < 24; i++) {
         const hourRecords = records.filter(r => {
-            if (!r.timestamp) return false;
-            const hour = new Date(r.timestamp).getHours();
+            if (!r.time) return false;
+            const hour = new Date(r.time).getHours();
             return hour === i;
         });
 
         const avgHourSpeed = hourRecords.length > 0 ?
             hourRecords.reduce((sum, r) => sum + (r.speed || 0), 0) / hourRecords.length : 0;
         const avgHourAccel = hourRecords.length > 0 ?
-            hourRecords.reduce((sum, r) => sum + (r.acceleration || 0), 0) / hourRecords.length : 0;
+            hourRecords.reduce((sum, r) => sum + Math.sqrt((Math.pow(r.accX || 0, 2) + Math.pow(r.accY || 0, 2) + Math.pow(r.accZ || 0, 2))), 0) / hourRecords.length : 0;
 
         hourlyData.push({
             hour: `${i.toString().padStart(2, '0')}:00`,
@@ -129,6 +129,12 @@ export const transformDrivingRecords = (records: any[]): DashboardData => {
             acceleration: Math.round(avgAcceleration * 10) / 10,
             date: records[0]?.date || new Date().toLocaleDateString(),
             time: records[0]?.time || new Date().toLocaleTimeString()
+        },
+        stats:{
+            totalRecords: records.length,
+            avgSpeed: Math.round(avgSpeed * 10) / 10,
+            maxSpeed: Math.round(maxSpeed * 10) / 10,
+            avgAcceleration: Math.round(avgAcceleration * 10) / 10
         },
         recentRecords,
         hourlyData

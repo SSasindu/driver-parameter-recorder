@@ -48,11 +48,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
                 setError('Login failed. Invalid response from server.');
             }
             // }
-        } catch (err: any) {
-            if (err.response?.status === 404) {
-                setError('Device ID not found. Please check your device ID or sign up.');
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err) && err.response) {
+                if (err.response.status === 404) {
+                    setError('Device ID not found. Please check your device ID or sign up.');
+                } else {
+                    setError(err.response.data.message || 'Login failed. Please try again.');
+                }
             } else {
-                setError(err.response?.data?.message || 'Login failed. Please try again.');
+                setError('Login failed. Please try again.');
             }
         } finally {
             setIsLoading(false);

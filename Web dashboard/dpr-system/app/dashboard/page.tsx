@@ -12,6 +12,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { Menu, LogOut } from 'lucide-react';
 import axios from 'axios';
 import { logout } from '@/lib/auth';
+import { DashboardData, DrivingRecordReduced } from '@/types';
 
 interface User {
     id: string;
@@ -25,8 +26,8 @@ export default function DashboardPage() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [user, setUser] = useState<User | null>(null);
-    const [dashboardData, setDashboardData] = useState<any>(null);
-    const [userRecords, setUserRecords] = useState<any[]>([]);
+    const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+    const [userRecords, setUserRecords] = useState<DrivingRecordReduced[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
@@ -62,15 +63,12 @@ export default function DashboardPage() {
         };
 
         checkAuthentication();
-    }, [router]);
 
-    // Load initial dashboard data when user is set
-    useEffect(() => {
         if (user && activeTab === 'dashboard') {
             handleTabChange('dashboard');
         }
-    }, [user]);
-
+    }, [activeTab, router, user]);
+    
     const handleTabChange = async (tab: string) => {
         setActiveTab(tab);
 
@@ -85,8 +83,6 @@ export default function DashboardPage() {
                         setDashboardData(response.data.records || []);
                     } catch (error) {
                         console.error('Error fetching dashboard data:', error);
-                        // Fallback to mock data
-                        // setDashboardData(generateMockData());
                     }
                     break;
 
@@ -97,8 +93,6 @@ export default function DashboardPage() {
                         setUserRecords(response.data.allRecords || []);
                     } catch (error) {
                         console.error('Error fetching records:', error);
-                        // Fallback to mock data
-                        // setUserRecords(generateMockData().recentRecords);
                     }
                     break;
 

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Car, BarChart3, Database, User, LogOut } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation';
 import { logout } from '@/lib/auth';
 
 interface SidebarProps {
@@ -11,7 +11,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
-    const router = useRouter();
+    // const router = useRouter();
 
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },

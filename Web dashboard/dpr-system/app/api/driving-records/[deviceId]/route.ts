@@ -3,7 +3,7 @@ import connectDB from '@/lib/mongodb';
 import { transformDrivingRecords } from '@/lib/utils';
 
 export async function GET(
-    // request: NextRequest,
+    request: NextRequest,
     { params }: { params: Promise<{ deviceId: string }> }
 ) {
     try {
@@ -50,7 +50,7 @@ export async function GET(
             accX: record.accX || 0,
             accY: record.accY || 0,
             accZ: record.accZ || 0,
-            deviceId: record.deviceId
+            // deviceId: record.deviceId
         }));
 
         const transformedAllRecords = allRecords.map(record => ({
@@ -59,7 +59,7 @@ export async function GET(
             time: record.time,
             speed: record.speed || 0,
             acceleration: Math.sqrt(Math.pow(record.accX, 2) + Math.pow(record.accY, 2) + Math.pow(record.accZ, 2)) || 0,
-            deviceId: record.deviceId
+            // deviceId: record.deviceId
         }));
 
         const dashboardData = transformDrivingRecords(transformedRecords);
@@ -70,12 +70,12 @@ export async function GET(
             deviceId: deviceIdInt
         }, { status: 200 });
 
-    } catch (error: any) {
-        console.error("Error fetching driving records:", error.message);
+    } catch (error: unknown) {
+        console.error("Error fetching driving records:", error instanceof Error ? error.message : String(error));
 
         return NextResponse.json({
             error: 'Failed to fetch driving records',
-            details: error.message
+            details: error instanceof Error ? error.message : String(error)
         }, { status: 500 });
     }
 }

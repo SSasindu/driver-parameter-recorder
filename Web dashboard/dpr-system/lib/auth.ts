@@ -1,4 +1,5 @@
-import axios, { AxiosRequestConfig } from 'axios';
+import { User } from '@/types';
+import axios from 'axios';
 
 // Create an axios instance with default configuration
 const apiClient = axios.create({
@@ -61,7 +62,7 @@ export const logout = () => {
 };
 
 // Helper function to set auth data
-export const setAuthData = (token: string, user: any) => {
+export const setAuthData = (token: string, user: User) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
 };

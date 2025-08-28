@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { DrivingRecord } from '@/types';
+import { DrivingRecordReduced } from '@/types';
 import { formatDate, formatSpeed, formatAcceleration } from '@/lib/utils';
 
 interface RecentRecordsProps {
-    records: DrivingRecord[];
+    records: DrivingRecordReduced[];
 }
 
 export const RecentRecords: React.FC<RecentRecordsProps> = ({ records }) => {

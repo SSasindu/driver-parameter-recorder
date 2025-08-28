@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { isAuthenticated, getCurrentUser } from '@/lib/auth';
+import { isAuthenticated } from '@/lib/auth';
 import axios from 'axios';
 
 interface ProtectedRouteProps {

@@ -43,31 +43,35 @@ export async function GET(
                 error: 'Configuration not found for the specified device ID'
             }, { status: 404 });
         }
-
+        const safeConfigData = { 
+            firstName: configData.firstName,
+            email: configData.email || '',
+            deviceId: configData.deviceId,
+            createdAt: configData.createdAt,
+            updatedAt: configData.updatedAt
+         };
         // Return the configuration data (excluding sensitive information like password)
-        const { password, ...safeConfigData } = configData;
-
+        // const { password, ...safeConfigData } = configData;
+        
         return NextResponse.json(safeConfigData, { status: 200 });
 
-    } catch (error: any) {
-        console.error("MongoDB Config Fetch Error:", error.message);
+    } catch (error: unknown) {
+        console.error("MongoDB Config Fetch Error:", error instanceof Error ? error.message : String(error));
 
         return NextResponse.json({
             error: 'Configuration fetch failed',
-            details: error.message
+            details: error instanceof Error ? error.message : String(error)
         }, { status: 500 });
     }
 }
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { deviceId: string } }
+    { params }: { params: Promise<{ deviceId: string }> }
 ) {
     try {
-        const { deviceId } = params;
+        const { deviceId } = await params;
         const { password } = await request.json();
-        console.log(`Device ID: ${deviceId}`);
-        console.log(`Password: ${password}`);
         // Validate deviceId parameter
         if (!deviceId) {
             return NextResponse.json({
@@ -129,12 +133,12 @@ export async function POST(
                 error: 'Invalid password'
             }, { status: 401 });
         }
-    } catch (error: any) {
-        console.error("MongoDB Config Fetch Error:", error.message);
+    } catch (error: unknown) {
+        console.error("MongoDB Config Fetch Error:", error instanceof Error ? error.message : String(error));
 
         return NextResponse.json({
             error: 'Configuration fetch failed',
-            details: error.message
+            details: error instanceof Error ? error.message : String(error)
         }, { status: 500 });
     }
 }

@@ -32,11 +32,12 @@ export async function POST(request: NextRequest) {
             message: 'Data inserted successfully'
         }, { status: 200 });
 
-    } catch (error: any) {
-        console.error("MongoDB Insert Error:", error.message);
+    } catch (error: unknown) {
+        console.error("MongoDB Insert Error:", error instanceof Error ? error.message : String(error));
 
         return NextResponse.json({
-            error: 'Database insert failed'
+            error: 'Database insert failed',
+            details: error instanceof Error ? error.message : String(error)
         }, { status: 500 });
     }
 }

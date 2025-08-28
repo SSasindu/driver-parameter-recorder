@@ -72,8 +72,12 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
                 // Redirect to dashboard
                 router.push('/dashboard');
             }
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Signup failed. Please try again.');
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err) && err.response) {
+                setError(err.response.data.message || 'Signup failed. Please try again.');
+            } else {
+                setError('Signup failed. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }

@@ -103,12 +103,12 @@ export async function POST(request: NextRequest) {
             user
         }, { status: 200 });
 
-    } catch (error: any) {
-        console.error("MongoDB Config Insert Error:", error.message);
+    } catch (error: unknown) {
+        console.error("MongoDB Config Insert Error:", error instanceof Error ? error.message : String(error));
 
         return NextResponse.json({
             error: 'Configuration insert failed',
-            details: error.message
+            details: error instanceof Error ? error.message : String(error)
         }, { status: 500 });
     }
 }

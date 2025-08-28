@@ -26,6 +26,16 @@ export interface DrivingMetrics {
 }
 
 export interface DrivingRecord {
+    id : string;
+    date: string;
+    time: string;
+    speed: number;
+    accX: number;
+    accY: number;
+    accZ: number;
+}
+
+export interface DrivingRecordReduced {
     id: string;
     date: string;
     time: string;
@@ -43,8 +53,14 @@ export interface HourlyData {
 export interface DashboardData {
     overallScore: number;
     currentMetrics: DrivingMetrics;
-    recentRecords: DrivingRecord[];
+    recentRecords: DrivingRecordReduced[];
     hourlyData: HourlyData[];
+    stats: {
+        totalRecords: number;
+        avgSpeed: number;
+        maxSpeed: number;
+        avgAcceleration: number;
+    };
 }
 
 export type ScoreColor = 'green' | 'yellow' | 'red';

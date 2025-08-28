@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify the token
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = jwt.verify(token, JWT_SECRET) as { deviceId: number, iat: number, exp: number };
 
         // Connect to MongoDB to get fresh user data
         const mongoose = await connectDB();
@@ -34,13 +34,13 @@ export async function POST(request: NextRequest) {
         }
 
         // Return user data (excluding password)
-        const { password, ...safeUserData } = user;
+        // const { password, ...safeUserData } = user;
         const userData = {
-            id: safeUserData._id,
-            firstName: safeUserData.firstName,
-            email: safeUserData.email || '',
-            deviceId: safeUserData.deviceId,
-            createdAt: safeUserData.createdAt
+            id: user._id,
+            firstName: user.firstName,
+            email: user.email || '',
+            deviceId: user.deviceId,
+            createdAt: user.createdAt
         };
 
         return NextResponse.json({
@@ -48,16 +48,16 @@ export async function POST(request: NextRequest) {
             user: userData
         }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Token verification error:', error);
 
-        if (error.name === 'JsonWebTokenError') {
+        if (error instanceof jwt.JsonWebTokenError) {
             return NextResponse.json({
                 error: 'Invalid token'
             }, { status: 401 });
         }
 
-        if (error.name === 'TokenExpiredError') {
+        if (error instanceof jwt.TokenExpiredError) {
             return NextResponse.json({
                 error: 'Token expired'
             }, { status: 401 });
