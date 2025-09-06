@@ -18,17 +18,29 @@
 #define MOSI 23 //13
 #define SCK 18 //14
 
-#define MAX_LINES 400
+#define MAX_LINES 200
 #define GPS_BAUD 9600
+
+#define redLED 25
+#define greenLED 32
+#define yellowLED 33
 
 int count = 0;
 const int deviceId = 13;
+int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
+float accX, accY, accZ, filtered_ax, filtered_ay, filtered_az, gyroX, gyroY, gyroZ;
+// Filtered linear acceleration
+float linAccX_f = 0, linAccY_f = 0, linAccZ_f = 0;
+// Store last input for HPF
+float lastLinAccX = 0, lastLinAccY = 0, lastLinAccZ = 0;
+const float alpha = 0.93;
+float roll = 0, pitch = 0, yaw = 0;
+unsigned long lastTime = 0;
 
 const char *ssid = "RedmiNote12";
 const char *password = "11111111";
-const char *filename = "/data.txt";
 const String mongodbstring = "mongodb+srv://ssasindu120:b8WUn44WwJFYgl2U@cluster0.82qxix2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-const char *serverName = "http://192.168.8.116:3000/upload";
+const char *serverName = "http://192.168.8.116:3000/api/upload";
 
 TinyGPSPlus gps;
 MPU6050 mpu;
@@ -67,26 +79,6 @@ public:
   void setProcessNoise(float q) { _q = q; }
 };
 
-// Functions for SD card write
-void readFile(fs::FS &fs, const char *path)
-{
-  Serial.printf("Reading file: %s\n", path);
-
-  File file = fs.open(path);
-  if (!file)
-  {
-    Serial.println("Failed to open file for reading");
-    return;
-  }
-
-  Serial.print("Read from file: ");
-  while (file.available())
-  {
-    Serial.write(file.read());
-  }
-  file.close();
-}
-
 void writeFile(fs::FS &fs, const char *path, const char *message)
 {
   Serial.printf("Writing file: %s\n", path);
@@ -110,6 +102,7 @@ void writeFile(fs::FS &fs, const char *path, const char *message)
 
 void logDataToSD(float ax, float ay, float az, float speed, String date, String time)
 {
+  digitalWrite(yellowLED, HIGH);
   File file = SD.open("/data.txt", FILE_APPEND);
   StaticJsonDocument<200> doc;
   doc["deviceId"] = deviceId;
@@ -119,6 +112,7 @@ void logDataToSD(float ax, float ay, float az, float speed, String date, String 
   doc["accY"] = ay;
   doc["accZ"] = az;
   doc["speed"] = speed;
+  doc["valid"] = 1;
   String json;
   serializeJson(doc, json);
 
@@ -126,8 +120,11 @@ void logDataToSD(float ax, float ay, float az, float speed, String date, String 
   if (file)
   {
     file.println(json);
+    file.flush();
     file.close();
     Serial.println("Data logged.");
+    delay(75);
+    digitalWrite(yellowLED, LOW);
   }
   else
   {
@@ -145,26 +142,21 @@ String readFileToJsonArray()
   }
 
   String jsonPayload = "[";
+  bool first = true;
 
   while (file.available())
   {
     String line = file.readStringUntil('\n');
     line.trim();
-    if (line.length() == 0)
-      continue;
+    if (line.length() == 0) continue;
+    if (!line.endsWith("}")) continue;      
+    if (line.indexOf("\"valid\":1") == -1) continue; 
 
-    bool first = true;
-    while (file.available())
-    {
-      String line = file.readStringUntil('\n');
-      line.trim();
-      if (line.length() == 0) continue;
-      
-      if (!first) jsonPayload += ",";
-      jsonPayload += line;
-      first = false;  
-    }
+    if (!first) jsonPayload += ",";
+    jsonPayload += line;
+    first = false;
   }
+
   jsonPayload += "]";
   file.close();
 
@@ -173,6 +165,7 @@ String readFileToJsonArray()
 
 void sendSDDataToServer()
 {
+  digitalWrite(greenLED,HIGH);
   if (WiFi.status() != WL_CONNECTED)
   {
     Serial.println("WiFi not connected");
@@ -197,14 +190,16 @@ void sendSDDataToServer()
     if (response.indexOf("Data inserted") != -1)
     {
       writeFile(SD, "/data.txt", "User_1"); // Only if successfully inserted, Data cleared
+      // delay(150);
+      digitalWrite(greenLED,LOW);
     }
   }
   http.end();
 }
 
 void createAccessPoint(){
+  digitalWrite(greenLED,HIGH);
   WiFiManager wm;
-
   // Try to connect, if fails, start AP mode with config portal
   if (!wm.autoConnect("ESP32_ConfigAP", "12345678")) {
     Serial.println("Failed to connect and hit timeout");
@@ -214,6 +209,8 @@ void createAccessPoint(){
   Serial.println("Connected to Wi-Fi!");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
+  // delay(200);
+  digitalWrite(greenLED,LOW);
 }
 
 SimpleKalmanFilter kf_ax(0.1, 0.1, 0.5);
@@ -226,18 +223,23 @@ void setup()
 {
   Serial.begin(GPS_BAUD);
   createAccessPoint();
-  // connectWiFi();
-
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   Serial.println("Serial 2 started at 9600 baud rate");
-
   Wire.begin(I2C_SDA, I2C_SCL);
+  pinMode(redLED, OUTPUT);
+  pinMode(greenLED, OUTPUT);
+  pinMode(yellowLED, OUTPUT);
+  digitalWrite(redLED,LOW);
+  digitalWrite(greenLED,LOW);
+  digitalWrite(yellowLED,LOW);
 
+  //MPU initialization
   mpu.initialize();
 
   if (mpu.testConnection())
   {
     Serial.println("MPU6050 connected successfully!");
+    lastTime = millis();
   }
   else
   {
@@ -261,23 +263,62 @@ void setup()
   // String array = readFileToJsonArray();
   // Serial.print(array);
   // readFile(SD, "/data.txt");
-  // writeFile(SD, "/data.txt", "User1");
+  // writeFile(SD, "/data.txt", "");
 }
 
 void loop()
 {
+  // ax = ay = az = gx = gy = gz = 0;
+  // mpu.getAcceleration(&ax, &ay, &az);
+  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-  int16_t ax, ay, az;
-  mpu.getAcceleration(&ax, &ay, &az);
-
-  float ax_ms2 = (float)ax / 16384.0 * 9.80665;
-  float ay_ms2 = (float)ay / 16384.0 * 9.80665;
-  float az_ms2 = (float)az / 16384.0 * 9.80665;
+  accX = (float)ax / 16384.0;
+  accY = (float)ay / 16384.0;
+  accZ = (float)az / 16384.0;
+  gyroX = gx / 131.0; 
+  gyroY = gy / 131.0;
+  gyroZ = gz / 131.0;
 
   // Apply Kalman filtering
-  float filtered_ax = kf_ax.updateEstimate(ax_ms2);
-  float filtered_ay = kf_ay.updateEstimate(ay_ms2);
-  float filtered_az = kf_az.updateEstimate(az_ms2);
+  accX = kf_ax.updateEstimate(accX);
+  accY = kf_ay.updateEstimate(accY);
+  accZ = kf_az.updateEstimate(accZ);
+
+  unsigned long now = millis();
+  float dt = (now - lastTime) / 1000.0;
+  lastTime = now;
+
+  float accRoll = atan2(accY, accZ) * 180 / PI;
+  float accPitch = atan2(-accX, sqrt(accY * accY + accZ * accZ)) * 180 / PI;
+
+  roll = 0.98 * (roll + gyroX * dt) + 0.02 * accRoll;
+  pitch = 0.98 * (pitch + gyroY * dt) + 0.02 * accPitch;
+  yaw += gyroZ * dt;
+
+  float gX = sin(radians(pitch));
+  float gY = sin(radians(roll));
+  float gZ = cos(radians(pitch)) * cos(radians(roll));
+
+  float linAccX = (accX - gX) * 9.80665;
+  float linAccY = (accY - gY) * 9.80665;
+  float linAccZ = (accZ - gZ) * 9.80665;
+
+  // Apply High-Pass Filter (HPF)
+  linAccX_f = alpha * (linAccX_f + linAccX - lastLinAccX);
+  linAccY_f = alpha * (linAccY_f + linAccY - lastLinAccY);
+  linAccZ_f = alpha * (linAccZ_f + linAccZ - lastLinAccZ);
+
+  // Update last raw inputs
+  lastLinAccX = linAccX;
+  lastLinAccY = linAccY;
+  lastLinAccZ = linAccZ;
+
+  // Serial.print("filteredLinearAccX(m/s^2):");
+  // Serial.print(linAccX_f); Serial.print(",");
+  // Serial.print("filteredLinearAccY(m/s^2):");
+  // Serial.print(linAccY_f); Serial.print(",");
+  // Serial.print("filteredLinearAccZ(m/s^2):");
+  // Serial.println(linAccZ_f);  
 
   while (gpsSerial.available() > 0)
   {
@@ -309,10 +350,13 @@ void loop()
   String date = String(gps.date.year()) + "-" + String(gps.date.month()) + "-" + String(gps.date.day());
   String timeStr = timeBuffer;
 
-  if (date == "2000-0-0")
+  if (date == "2000-0-0"){
+    digitalWrite(redLED,HIGH);
     return;
+  }
+  digitalWrite(redLED,LOW);
 
-  logDataToSD(filtered_ax, filtered_ay, filtered_az, filtered_speed, date, timeStr);
+  logDataToSD(linAccX_f, linAccY_f, linAccZ_f, filtered_speed, date, timeStr);
   count++;
   if (count >= MAX_LINES)
   {

@@ -12,63 +12,77 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { Menu, LogOut } from 'lucide-react';
 import axios from 'axios';
 import { logout } from '@/lib/auth';
-import { DashboardData, DrivingRecordReduced } from '@/types';
+import { DashboardData, DrivingRecordReduced, User } from '@/types';
 
-interface User {
-    id: string;
-    firstName: string;
-    email: string;
-    deviceId: string;
-    createdAt: string;
-}
+// interface User {
+//     id: string;
+//     firstName: string;
+//     email: string;
+//     currentPassword?: string;
+//     password?: string;
+//     deviceId: string;
+//     createdAt: string;
+// }
+const user1: User = {
+    id: '',
+    firstName: '',
+    email: '',
+    currentPassword: '',
+    password: '',
+    deviceId: '',
+    createdAt: '',
+};
 
 export default function DashboardPage() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<User>(user1);
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
     const [userRecords, setUserRecords] = useState<DrivingRecordReduced[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [updateEmail, setUpdateEmail] = useState(user.email || '');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [updatePassword, setUpdatePassword] = useState('');
+    const [updateLoading, setUpdateLoading] = useState(false);
+    const [updateError, setUpdateError] = useState('');
+    const [updateSuccess, setUpdateSuccess] = useState('');
 
+    // Run authentication check only once on mount
     useEffect(() => {
         const checkAuthentication = async () => {
             const token = localStorage.getItem('token');
-
             if (!token) {
                 router.push('/');
                 return;
             }
-
             try {
-                // Verify token with the server
                 const response = await axios.post('/api/auth/verify', { token });
-
                 if (response.data.valid && response.data.user) {
                     setUser(response.data.user);
                     setIsLoading(false);
                 } else {
-                    // Invalid token, clear storage and redirect
                     localStorage.removeItem('token');
                     localStorage.removeItem('user');
                     router.push('/');
                 }
             } catch (error) {
                 console.error('Authentication verification failed:', error);
-                // Clear invalid token and redirect
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 router.push('/');
             }
         };
-
         checkAuthentication();
+    }, [router]);
 
-        if (user && activeTab === 'dashboard') {
-            handleTabChange('dashboard');
-        }
-    }, [activeTab, router, user]);
-    
+    // Load tab data when user or activeTab changes
+    useEffect(() => {
+        if (!user) return;
+        handleTabChange(activeTab);
+    }, [user, activeTab]);
+
     const handleTabChange = async (tab: string) => {
         setActiveTab(tab);
 
@@ -107,6 +121,35 @@ export default function DashboardPage() {
 
     const handleLogout = () => {
         logout();
+    };
+
+    const handleUpdateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setUpdateLoading(true);
+        setUpdateError('');
+        setUpdateSuccess('');
+        try {
+            const payload: User = user1;
+            if (updateEmail) payload.email = updateEmail;
+            if (currentPassword) payload.currentPassword = currentPassword;
+            if (updatePassword) payload.password = updatePassword;
+            if (Object.keys(payload).length === 0) {
+                setUpdateError('No changes to update.');
+                setUpdateLoading(false);
+                return;
+            }
+            const response = await axios.put(`/api/config/${user.deviceId}`, payload);
+            if (response.data.user) {
+                setUser(response.data.user);
+                setUpdateSuccess('Profile updated successfully!');
+                setUpdatePassword('');
+            } else {
+                setUpdateError('Failed to update profile.');
+            }
+        } catch (err: unknown) {
+            setUpdateError('Update failed.');
+        }
+        setUpdateLoading(false);
     };
 
     if (isLoading || !user) {
@@ -222,6 +265,11 @@ export default function DashboardPage() {
                 );
 
             case 'profile':
+                // Modal state for update profile
+                // const [updateEmail, setUpdateEmail] = useState(user.email || '');
+
+
+
                 return (
                     <div className="space-y-6">
                         {/* Profile Header */}
@@ -274,11 +322,11 @@ export default function DashboardPage() {
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Actions</h3>
                             <div className="space-y-3">
-                                <button className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                <button
+                                    className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                    onClick={() => setShowUpdateModal(true)}
+                                >
                                     Update Profile
-                                </button>
-                                <button className="w-full md:w-auto px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors ml-0 md:ml-3">
-                                    Change Password
                                 </button>
                                 <button
                                     onClick={handleLogout}
@@ -288,6 +336,65 @@ export default function DashboardPage() {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Update Profile Modal */}
+                        {showUpdateModal && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                                <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
+                                    <h2 className="text-xl font-bold mb-4 text-gray-900">Update Profile</h2>
+                                    <form onSubmit={handleUpdateProfile} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-800">Email Address</label>
+                                            <input
+                                                type="email"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-gray-50 focus:border-blue-500 focus:ring-blue-500"
+                                                value={updateEmail}
+                                                onChange={e => setUpdateEmail(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-800">Current Password</label>
+                                            <input
+                                                type="password"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-gray-50 focus:border-blue-500 focus:ring-blue-500"
+                                                value={currentPassword}
+                                                onChange={e => setCurrentPassword(e.target.value)}
+                                                placeholder="Leave blank to keep current password"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-800">New Password</label>
+                                            <input
+                                                type="password"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-gray-50 focus:border-blue-500 focus:ring-blue-500"
+                                                value={updatePassword}
+                                                onChange={e => setUpdatePassword(e.target.value)}
+                                                placeholder="Leave blank to keep current password"
+                                            />
+                                        </div>
+                                        {updateError && <p className="text-red-700 text-sm font-medium">{updateError}</p>}
+                                        {updateSuccess && <p className="text-green-700 text-sm font-medium">{updateSuccess}</p>}
+                                        <div className="flex justify-end space-x-2">
+                                            <button
+                                                type="button"
+                                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300"
+                                                onClick={() => { setShowUpdateModal(false); setUpdateError(''); setUpdateSuccess(''); }}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                                                disabled={updateLoading}
+                                            >
+                                                {updateLoading ? 'Updating...' : 'Update'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
 

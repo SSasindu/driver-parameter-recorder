@@ -2,8 +2,11 @@ export interface User {
     id: string;
     firstName: string;
     email: string;
+    currentPassword?: string;
+    password?: string;
     deviceId: string;
     createdAt: string;
+    updatedAt?: string;
 }
 
 export interface LoginCredentials {
@@ -16,6 +19,11 @@ export interface SignupData {
     email: string;
     deviceId: string;
     password: string;
+}
+
+export interface userUpdateData {
+    email?: string;
+    password?: string;
 }
 
 export interface DrivingMetrics {
