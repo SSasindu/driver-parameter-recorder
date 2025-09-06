@@ -18,8 +18,12 @@
 #define MOSI 23 //13
 #define SCK 18 //14
 
-#define MAX_LINES 400
+#define MAX_LINES 200
 #define GPS_BAUD 9600
+
+#define redLED 25
+#define greenLED 32
+#define yellowLED 33
 
 int count = 0;
 const int deviceId = 13;
@@ -75,26 +79,6 @@ public:
   void setProcessNoise(float q) { _q = q; }
 };
 
-// Functions for SD card write
-void readFile(fs::FS &fs, const char *path)
-{
-  Serial.printf("Reading file: %s\n", path);
-
-  File file = fs.open(path);
-  if (!file)
-  {
-    Serial.println("Failed to open file for reading");
-    return;
-  }
-
-  Serial.print("Read from file: ");
-  while (file.available())
-  {
-    Serial.write(file.read());
-  }
-  file.close();
-}
-
 void writeFile(fs::FS &fs, const char *path, const char *message)
 {
   Serial.printf("Writing file: %s\n", path);
@@ -118,6 +102,7 @@ void writeFile(fs::FS &fs, const char *path, const char *message)
 
 void logDataToSD(float ax, float ay, float az, float speed, String date, String time)
 {
+  digitalWrite(yellowLED, HIGH);
   File file = SD.open("/data.txt", FILE_APPEND);
   StaticJsonDocument<200> doc;
   doc["deviceId"] = deviceId;
@@ -127,6 +112,7 @@ void logDataToSD(float ax, float ay, float az, float speed, String date, String 
   doc["accY"] = ay;
   doc["accZ"] = az;
   doc["speed"] = speed;
+  doc["valid"] = 1;
   String json;
   serializeJson(doc, json);
 
@@ -134,8 +120,11 @@ void logDataToSD(float ax, float ay, float az, float speed, String date, String 
   if (file)
   {
     file.println(json);
+    file.flush();
     file.close();
     Serial.println("Data logged.");
+    delay(75);
+    digitalWrite(yellowLED, LOW);
   }
   else
   {
@@ -153,26 +142,21 @@ String readFileToJsonArray()
   }
 
   String jsonPayload = "[";
+  bool first = true;
 
   while (file.available())
   {
     String line = file.readStringUntil('\n');
     line.trim();
-    if (line.length() == 0)
-      continue;
+    if (line.length() == 0) continue;
+    if (!line.endsWith("}")) continue;      
+    if (line.indexOf("\"valid\":1") == -1) continue; 
 
-    bool first = true;
-    while (file.available())
-    {
-      String line = file.readStringUntil('\n');
-      line.trim();
-      if (line.length() == 0) continue;
-      
-      if (!first) jsonPayload += ",";
-      jsonPayload += line;
-      first = false;  
-    }
+    if (!first) jsonPayload += ",";
+    jsonPayload += line;
+    first = false;
   }
+
   jsonPayload += "]";
   file.close();
 
@@ -181,6 +165,7 @@ String readFileToJsonArray()
 
 void sendSDDataToServer()
 {
+  digitalWrite(greenLED,HIGH);
   if (WiFi.status() != WL_CONNECTED)
   {
     Serial.println("WiFi not connected");
@@ -205,14 +190,16 @@ void sendSDDataToServer()
     if (response.indexOf("Data inserted") != -1)
     {
       writeFile(SD, "/data.txt", "User_1"); // Only if successfully inserted, Data cleared
+      // delay(150);
+      digitalWrite(greenLED,LOW);
     }
   }
   http.end();
 }
 
 void createAccessPoint(){
+  digitalWrite(greenLED,HIGH);
   WiFiManager wm;
-
   // Try to connect, if fails, start AP mode with config portal
   if (!wm.autoConnect("ESP32_ConfigAP", "12345678")) {
     Serial.println("Failed to connect and hit timeout");
@@ -222,6 +209,8 @@ void createAccessPoint(){
   Serial.println("Connected to Wi-Fi!");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
+  // delay(200);
+  digitalWrite(greenLED,LOW);
 }
 
 SimpleKalmanFilter kf_ax(0.1, 0.1, 0.5);
@@ -234,11 +223,15 @@ void setup()
 {
   Serial.begin(GPS_BAUD);
   createAccessPoint();
-
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   Serial.println("Serial 2 started at 9600 baud rate");
-
   Wire.begin(I2C_SDA, I2C_SCL);
+  pinMode(redLED, OUTPUT);
+  pinMode(greenLED, OUTPUT);
+  pinMode(yellowLED, OUTPUT);
+  digitalWrite(redLED,LOW);
+  digitalWrite(greenLED,LOW);
+  digitalWrite(yellowLED,LOW);
 
   //MPU initialization
   mpu.initialize();
@@ -357,8 +350,11 @@ void loop()
   String date = String(gps.date.year()) + "-" + String(gps.date.month()) + "-" + String(gps.date.day());
   String timeStr = timeBuffer;
 
-  if (date == "2000-0-0")
+  if (date == "2000-0-0"){
+    digitalWrite(redLED,HIGH);
     return;
+  }
+  digitalWrite(redLED,LOW);
 
   logDataToSD(linAccX_f, linAccY_f, linAccZ_f, filtered_speed, date, timeStr);
   count++;
