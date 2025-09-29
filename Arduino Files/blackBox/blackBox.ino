@@ -37,10 +37,7 @@ const float alpha = 0.93;
 float roll = 0, pitch = 0, yaw = 0;
 unsigned long lastTime = 0;
 
-const char *ssid = "RedmiNote12";
-const char *password = "11111111";
-const String mongodbstring = "mongodb+srv://ssasindu120:b8WUn44WwJFYgl2U@cluster0.82qxix2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-const char *serverName = "http://192.168.8.116:3000/api/upload";
+const char *serverName = "https://driver-parameter-recorder-web.vercel.app/api/upload";
 
 TinyGPSPlus gps;
 MPU6050 mpu;
@@ -187,12 +184,9 @@ void sendSDDataToServer()
 
   if (httpCode == 200)
   {
-    if (response.indexOf("Data inserted") != -1)
-    {
-      writeFile(SD, "/data.txt", "User_1"); // Only if successfully inserted, Data cleared
-      // delay(150);
-      digitalWrite(greenLED,LOW);
-    }
+    writeFile(SD, "/data.txt", "User_1"); // Only if successfully inserted, Data cleared
+    // delay(150);
+    digitalWrite(greenLED,LOW);
   }
   http.end();
 }
@@ -262,8 +256,10 @@ void setup()
 
   // String array = readFileToJsonArray();
   // Serial.print(array);
+
   // readFile(SD, "/data.txt");
-  // writeFile(SD, "/data.txt", "");
+  sendSDDataToServer();
+  writeFile(SD, "/data.txt", "");
 }
 
 void loop()
