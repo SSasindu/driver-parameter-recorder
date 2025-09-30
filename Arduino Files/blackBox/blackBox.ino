@@ -21,9 +21,10 @@
 #define MAX_LINES 200
 #define GPS_BAUD 9600
 
-#define redLED 25
-#define greenLED 32
-#define yellowLED 33
+#define redLED 26
+#define greenLED 33
+#define yellowLED 25
+#define blueLED 32
 
 int count = 0;
 const int deviceId = 13;
