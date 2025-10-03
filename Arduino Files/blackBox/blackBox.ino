@@ -7,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFiManager.h>
+#include <WiFiClientSecure.h>
 
 #define RXD2 16
 #define TXD2 17
@@ -39,6 +40,8 @@ float roll = 0, pitch = 0, yaw = 0;
 unsigned long lastTime = 0;
 
 const char *serverName = "https://driver-parameter-recorder-web.vercel.app/api/upload";
+WiFiClientSecure client;
+HTTPClient http;
 
 TinyGPSPlus gps;
 MPU6050 mpu;
@@ -172,8 +175,8 @@ void sendSDDataToServer()
 
   String jsonString = readFileToJsonArray();
 
-  HTTPClient http;
-  http.begin(serverName);
+  client.setInsecure();
+  http.begin(client, serverName);
   http.addHeader("Content-Type", "application/json");
 
   int httpCode = http.POST(jsonString);
@@ -185,8 +188,7 @@ void sendSDDataToServer()
 
   if (httpCode == 200)
   {
-    writeFile(SD, "/data.txt", "User_1"); // Only if successfully inserted, Data cleared
-    // delay(150);
+    writeFile(SD, "/data.txt", ""); // Only if successfully inserted, Data cleared
     digitalWrite(greenLED,LOW);
   }
   http.end();
@@ -260,7 +262,7 @@ void setup()
 
   // readFile(SD, "/data.txt");
   sendSDDataToServer();
-  writeFile(SD, "/data.txt", "");
+  // writeFile(SD, "/data.txt", "");
 }
 
 void loop()
