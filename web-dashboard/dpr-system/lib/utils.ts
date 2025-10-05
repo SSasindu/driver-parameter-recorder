@@ -77,47 +77,81 @@ export const generateMockData = () => {
 };
 
 export const transformDrivingRecords = (records: DrivingRecord[]): DashboardData => {
+    console.log(`Processing ${records.length} records for dashboard analysis`);
+
     const speeds = records.map(r => r.speed || 0).filter(s => s > 0);
-    const accelerations = records.map(r => Math.sqrt(Math.pow(r.accX, 2)+Math.pow(r.accY, 2)+Math.pow(r.accZ, 2)));
+    const accelerations = records.map(r => Math.sqrt(Math.pow(r.accX || 0, 2) + Math.pow(r.accY || 0, 2) + Math.pow(r.accZ || 0, 2)));
 
     const avgSpeed = speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : 0;
     const maxSpeed = speeds.length > 0 ? Math.max(...speeds) : 0;
     const avgAcceleration = accelerations.length > 0 ? accelerations.reduce((a, b) => a + b, 0) / accelerations.length : 0;
 
-    // Calculate driving score (simplified algorithm)
+    console.log(`Calculated stats: avgSpeed=${avgSpeed}, maxSpeed=${maxSpeed}, avgAcceleration=${avgAcceleration}, totalRecords=${records.length}`);
+
+    // Calculate driving score based on comprehensive data
     let score = 85; // Base score
     if (maxSpeed > 80) score -= 10; // Speed penalty
     if (avgAcceleration > 3) score -= 5; // Harsh acceleration penalty
     if (avgAcceleration < -3) score -= 5; // Harsh braking penalty
+
+    // Additional scoring based on comprehensive analysis
+    const speedViolations = speeds.filter(s => s > 60).length; // Count speeds over 60 km/h
+    const speedViolationRate = speedViolations / speeds.length;
+    if (speedViolationRate > 0.3) score -= 5; // More than 30% speeding
+
     score = Math.max(0, Math.min(100, score));
 
-    // Get recent records for display
-    const recentRecords = records.slice(0, 10).map(record => ({
+    // Get recent records for display (top 10 most recent)
+    const sortedRecentRecords = [...records]
+        .sort((a, b) => {
+            const dateA = new Date(a.date + ' ' + a.time);
+            const dateB = new Date(b.date + ' ' + b.time);
+            return dateB.getTime() - dateA.getTime();
+        })
+        .slice(0, 10);
+
+    const recentRecords = sortedRecentRecords.map(record => ({
         id: record.id,
         date: record.date,
         time: record.time,
         speed: record.speed || 0,
-        acceleration: Math.sqrt(Math.pow(record.accX, 2) + Math.pow(record.accY, 2) + Math.pow(record.accZ, 2)) || 0
+        acceleration: Math.sqrt(Math.pow(record.accX || 0, 2) + Math.pow(record.accY || 0, 2) + Math.pow(record.accZ || 0, 2)) || 0
     }));
 
-    // Generate hourly data (simplified)
+    // Generate comprehensive hourly data
     const hourlyData = [];
     for (let i = 0; i < 24; i++) {
         const hourRecords = records.filter(r => {
             if (!r.time) return false;
-            const hour = new Date(r.time).getHours();
-            return hour === i;
+            try {
+                // Handle different time formats
+                let hour;
+                if (r.time.includes(':')) {
+                    // Time format like "14:30:00" or "14:30"
+                    hour = parseInt(r.time.split(':')[0]);
+                } else {
+                    // If time is just a timestamp, convert it
+                    const timeDate = new Date(r.time);
+                    hour = timeDate.getHours();
+                }
+                return hour === i;
+            } catch (error) {
+                console.warn('Error parsing time for record:', r.time, error);
+                return false;
+            }
         });
 
         const avgHourSpeed = hourRecords.length > 0 ?
             hourRecords.reduce((sum, r) => sum + (r.speed || 0), 0) / hourRecords.length : 0;
+        const maxHourSpeed = hourRecords.length > 0 ?
+            Math.max(...hourRecords.map(r => r.speed || 0)) : 0;
         const avgHourAccel = hourRecords.length > 0 ?
             hourRecords.reduce((sum, r) => sum + Math.sqrt((Math.pow(r.accX || 0, 2) + Math.pow(r.accY || 0, 2) + Math.pow(r.accZ || 0, 2))), 0) / hourRecords.length : 0;
 
         hourlyData.push({
             hour: `${i.toString().padStart(2, '0')}:00`,
             avgSpeed: Math.round(avgHourSpeed * 10) / 10,
-            maxSpeed: Math.round((hourRecords.length > 0 ? Math.max(...hourRecords.map(r => r.speed || 0)) : 0) * 10) / 10,
+            maxSpeed: Math.round(maxHourSpeed * 10) / 10,
             avgAcceleration: Math.round(avgHourAccel * 10) / 10
         });
     }
@@ -130,7 +164,7 @@ export const transformDrivingRecords = (records: DrivingRecord[]): DashboardData
             date: records[0]?.date || new Date().toLocaleDateString(),
             time: records[0]?.time || new Date().toLocaleTimeString()
         },
-        stats:{
+        stats: {
             totalRecords: records.length,
             avgSpeed: Math.round(avgSpeed * 10) / 10,
             maxSpeed: Math.round(maxSpeed * 10) / 10,

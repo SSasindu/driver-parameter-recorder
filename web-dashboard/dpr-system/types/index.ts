@@ -7,6 +7,7 @@ export interface User {
     deviceId: string;
     createdAt: string;
     updatedAt?: string;
+    lastUpdated?: string;
 }
 
 export interface LoginCredentials {
@@ -34,7 +35,7 @@ export interface DrivingMetrics {
 }
 
 export interface DrivingRecord {
-    id : string;
+    id: string;
     date: string;
     time: string;
     speed: number;

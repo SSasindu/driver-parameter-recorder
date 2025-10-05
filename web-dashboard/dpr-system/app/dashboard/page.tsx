@@ -31,6 +31,7 @@ const user1: User = {
     password: '',
     deviceId: '',
     createdAt: '',
+    lastUpdated: '',
 };
 
 export default function DashboardPage() {
@@ -77,46 +78,146 @@ export default function DashboardPage() {
         checkAuthentication();
     }, [router]);
 
-    // Load tab data when user or activeTab changes
+    // Load tab data when user deviceId or activeTab changes
     useEffect(() => {
-        if (!user) return;
-        handleTabChange(activeTab);
-    }, [user, activeTab]);
+        if (!user || !user.deviceId) return;
+
+        const fetchTabData = async () => {
+            try {
+                switch (activeTab) {
+                    case 'dashboard':
+                        // Fetch dashboard analytics for the user's deviceId
+                        try {
+                            const response = await axios.get(`/api/driving-records/${user.deviceId}`);
+                            const apiDashboardData = response.data.records;
+
+                            console.log('Dashboard API Response:', response.data);
+                            console.log('Dashboard Data:', apiDashboardData);
+                            console.log('Dashboard Data Stats:', apiDashboardData?.stats);
+                            console.log('Dashboard Data Recent Records:', apiDashboardData?.recentRecords);
+
+                            // Ensure we have a proper DashboardData object
+                            if (apiDashboardData && typeof apiDashboardData === 'object') {
+                                // Process the dashboard data to ensure recent records are properly sorted
+                                const processedDashboardData = {
+                                    ...apiDashboardData,
+                                    recentRecords: apiDashboardData.recentRecords
+                                        ? [...apiDashboardData.recentRecords]
+                                            .sort((a, b) => {
+                                                const dateA = new Date(a.date + ' ' + a.time);
+                                                const dateB = new Date(b.date + ' ' + b.time);
+                                                return dateB.getTime() - dateA.getTime();
+                                            })
+                                            .slice(0, 10) // Ensure we only show latest 10 records
+                                        : []
+                                };
+
+                                setDashboardData(processedDashboardData);
+
+                                // Update user.lastUpdated with the latest record's date and time
+                                if (processedDashboardData.recentRecords && processedDashboardData.recentRecords.length > 0) {
+                                    const latestRecord = processedDashboardData.recentRecords[0];
+                                    const lastUpdatedDateTime = `${latestRecord.date} ${latestRecord.time}`;
+
+                                    // Only update if the lastUpdated value has changed
+                                    if (user.lastUpdated !== lastUpdatedDateTime) {
+                                        setUser(prevUser => ({
+                                            ...prevUser,
+                                            lastUpdated: lastUpdatedDateTime
+                                        }));
+                                    }
+                                }
+                            } else {
+                                console.warn('Invalid dashboard data received:', apiDashboardData);
+                                // Set default dashboard data structure when no data is available
+                                setDashboardData({
+                                    overallScore: 0,
+                                    currentMetrics: {
+                                        speed: 0,
+                                        acceleration: 0,
+                                        date: new Date().toLocaleDateString(),
+                                        time: new Date().toLocaleTimeString()
+                                    },
+                                    recentRecords: [],
+                                    hourlyData: [],
+                                    stats: {
+                                        totalRecords: 0,
+                                        avgSpeed: 0,
+                                        maxSpeed: 0,
+                                        avgAcceleration: 0
+                                    }
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Error fetching dashboard data:', error);
+                            // Set default dashboard data structure on error
+                            setDashboardData({
+                                overallScore: 0,
+                                currentMetrics: {
+                                    speed: 0,
+                                    acceleration: 0,
+                                    date: new Date().toLocaleDateString(),
+                                    time: new Date().toLocaleTimeString()
+                                },
+                                recentRecords: [],
+                                hourlyData: [],
+                                stats: {
+                                    totalRecords: 0,
+                                    avgSpeed: 0,
+                                    maxSpeed: 0,
+                                    avgAcceleration: 0
+                                }
+                            });
+                        }
+                        break;
+
+                    case 'records':
+                        // Fetch records for the user's deviceId
+                        try {
+                            const response = await axios.get(`/api/driving-records/${user.deviceId}`);
+                            const allRecords = response.data.allRecords || [];
+                            setUserRecords(allRecords);
+
+                            // Update user.lastUpdated with the latest record's date and time
+                            if (allRecords.length > 0) {
+                                // Sort records by date to get the most recent one
+                                const sortedRecords = [...allRecords].sort((a, b) => {
+                                    const dateA = new Date(a.date + ' ' + a.time);
+                                    const dateB = new Date(b.date + ' ' + b.time);
+                                    return dateB.getTime() - dateA.getTime();
+                                });
+
+                                const latestRecord = sortedRecords[0];
+                                const lastUpdatedDateTime = `${latestRecord.date} ${latestRecord.time}`;
+
+                                // Only update if the lastUpdated value has changed
+                                if (user.lastUpdated !== lastUpdatedDateTime) {
+                                    setUser(prevUser => ({
+                                        ...prevUser,
+                                        lastUpdated: lastUpdatedDateTime
+                                    }));
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error fetching records:', error);
+                        }
+                        break;
+
+                    case 'profile':
+                        // Profile data is already in user state
+                        break;
+                }
+            } catch (error) {
+                console.error('Error fetching data for tab:', activeTab, error);
+            }
+        };
+
+        fetchTabData();
+    }, [user.deviceId, activeTab]);
 
     const handleTabChange = async (tab: string) => {
         setActiveTab(tab);
-
-        if (!user) return;
-
-        try {
-            switch (tab) {
-                case 'dashboard':
-                    // Fetch dashboard analytics for the user's deviceId
-                    try {
-                        const response = await axios.get(`/api/driving-records/${user.deviceId}`);
-                        setDashboardData(response.data.records || []);
-                    } catch (error) {
-                        console.error('Error fetching dashboard data:', error);
-                    }
-                    break;
-
-                case 'records':
-                    // Fetch records for the user's deviceId
-                    try {
-                        const response = await axios.get(`/api/driving-records/${user.deviceId}`);
-                        setUserRecords(response.data.allRecords || []);
-                    } catch (error) {
-                        console.error('Error fetching records:', error);
-                    }
-                    break;
-
-                case 'profile':
-                    // Profile data is already in user state
-                    break;
-            }
-        } catch (error) {
-            console.error('Error fetching data for tab:', tab, error);
-        }
+        // Data fetching is now handled by useEffect
     };
 
     const handleLogout = () => {
@@ -198,24 +299,24 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Statistics Summary */}
-                        {dashboardData.stats && (
+                        {dashboardData && dashboardData.stats && (
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary Statistics</h3>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div className="text-center p-4 bg-blue-50 rounded-lg">
-                                        <p className="text-2xl font-bold text-blue-600">{dashboardData.stats.totalRecords}</p>
+                                        <p className="text-2xl font-bold text-blue-600">{dashboardData.stats.totalRecords || 0}</p>
                                         <p className="text-sm text-gray-600">Total Records</p>
                                     </div>
                                     <div className="text-center p-4 bg-green-50 rounded-lg">
-                                        <p className="text-2xl font-bold text-green-600">{dashboardData.stats.avgSpeed} km/h</p>
+                                        <p className="text-2xl font-bold text-green-600">{dashboardData.stats.avgSpeed || 0} km/h</p>
                                         <p className="text-sm text-gray-600">Average Speed</p>
                                     </div>
                                     <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                                        <p className="text-2xl font-bold text-yellow-600">{dashboardData.stats.maxSpeed} km/h</p>
+                                        <p className="text-2xl font-bold text-yellow-600">{dashboardData.stats.maxSpeed || 0} km/h</p>
                                         <p className="text-sm text-gray-600">Max Speed</p>
                                     </div>
                                     <div className="text-center p-4 bg-purple-50 rounded-lg">
-                                        <p className="text-2xl font-bold text-purple-600">{dashboardData.stats.avgAcceleration} m/s²</p>
+                                        <p className="text-2xl font-bold text-purple-600">{dashboardData.stats.avgAcceleration || 0} m/s²</p>
                                         <p className="text-sm text-gray-600">Avg Acceleration</p>
                                     </div>
                                 </div>
@@ -446,6 +547,10 @@ export default function DashboardPage() {
                                 <div className="hidden sm:block text-right">
                                     <p className="text-xs text-gray-500">Device ID</p>
                                     <p className="text-sm font-mono text-gray-700">{user.deviceId}</p>
+                                </div>
+                                <div className="hidden sm:block text-right">
+                                    <p className="text-xs text-gray-500">Last Updated</p>
+                                    <p className="text-sm font-mono text-gray-700">{user.lastUpdated || 'No records yet'}</p>
                                 </div>
                                 <button
                                     onClick={handleLogout}

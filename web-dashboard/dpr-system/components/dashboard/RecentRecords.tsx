@@ -9,6 +9,13 @@ interface RecentRecordsProps {
 }
 
 export const RecentRecords: React.FC<RecentRecordsProps> = ({ records }) => {
+    // Sort records by date and time in descending order (most recent first)
+    const sortedRecords = [...records].sort((a, b) => {
+        const dateA = new Date(a.date + ' ' + a.time);
+        const dateB = new Date(b.date + ' ' + b.time);
+        return dateB.getTime() - dateA.getTime();
+    });
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Driving Records</h3>
@@ -32,12 +39,13 @@ export const RecentRecords: React.FC<RecentRecordsProps> = ({ records }) => {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {records.map((record) => {
+                        {sortedRecords.map((record) => {
                             const accelerationColorClass =
-                                record.acceleration > 2 ? 'text-red-600 bg-red-50' :
-                                    record.acceleration > 1 ? 'text-orange-600 bg-orange-50' :
-                                        record.acceleration < -2 ? 'text-yellow-600 bg-yellow-50' :
-                                            'text-green-600 bg-green-50';
+                                record.acceleration > 8 ? 'text-red-600 bg-red-50' :
+                                    record.acceleration > 5 ? 'text-orange-600 bg-orange-50' :
+                                        record.acceleration < -8 ? 'text-red-600 bg-red-50' :
+                                            record.acceleration < -5 ? 'text-orange-600 bg-orange-50' :
+                                                'text-green-600 bg-green-50';
 
                             return (
                                 <tr key={record.id} className="hover:bg-gray-50 transition-colors">
@@ -62,7 +70,7 @@ export const RecentRecords: React.FC<RecentRecordsProps> = ({ records }) => {
                 </table>
             </div>
 
-            {records.length === 0 && (
+            {sortedRecords.length === 0 && (
                 <div className="text-center py-8">
                     <p className="text-gray-500">No driving records available</p>
                 </div>

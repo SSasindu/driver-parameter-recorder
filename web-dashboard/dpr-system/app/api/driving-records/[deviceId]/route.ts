@@ -30,22 +30,16 @@ export async function GET(
         const deviceIdInt = parseInt(deviceId);
 
         // Find all records for this deviceId, sorted by timestamp (newest first)
-        const records = await sensorDataCollection
-            .find({ deviceId: deviceIdInt })
-            .sort({ timestamp: -1 })
-            .limit(100) // Limit to last 100 records
-            .toArray();
-
         const allRecords = await sensorDataCollection
             .find({ deviceId: deviceIdInt })
-            .sort({ date: -1 })
+            .sort({ timestamp: -1 })
             .toArray();
 
-        // Transform the data to match the expected format
-        const transformedRecords = records.map(record => ({
+        // Transform all records to match the expected format for dashboard analysis
+        const transformedAllRecords = allRecords.map(record => ({
             id: record._id.toString(),
             date: record.date ? new Date(record.date).toLocaleDateString() : new Date().toLocaleDateString(),
-            time: record.time ,
+            time: record.time,
             speed: record.speed || 0,
             accX: record.accX || 0,
             accY: record.accY || 0,
@@ -53,20 +47,22 @@ export async function GET(
             // deviceId: record.deviceId
         }));
 
-        const transformedAllRecords = allRecords.map(record => ({
+        // Transform reduced records for the records tab
+        const transformedReducedRecords = allRecords.map(record => ({
             id: record._id.toString(),
             date: record.date ? new Date(record.date).toLocaleDateString() : new Date().toLocaleDateString(),
             time: record.time,
             speed: record.speed || 0,
-            acceleration: Math.sqrt(Math.pow(record.accX, 2) + Math.pow(record.accY, 2) + Math.pow(record.accZ, 2)) || 0,
+            acceleration: Math.sqrt(Math.pow(record.accX || 0, 2) + Math.pow(record.accY || 0, 2) + Math.pow(record.accZ || 0, 2)) || 0,
             // deviceId: record.deviceId
         }));
 
-        const dashboardData = transformDrivingRecords(transformedRecords);
+        // Use ALL records for comprehensive dashboard analysis
+        const dashboardData = transformDrivingRecords(transformedAllRecords);
 
         return NextResponse.json({
             records: dashboardData,
-            allRecords: transformedAllRecords,
+            allRecords: transformedReducedRecords,
             deviceId: deviceIdInt
         }, { status: 200 });
 
