@@ -31,9 +31,7 @@ int count = 0;
 const int deviceId = 13;
 int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
 float accX, accY, accZ, filtered_ax, filtered_ay, filtered_az, gyroX, gyroY, gyroZ;
-// Filtered linear acceleration
 float linAccX_f = 0, linAccY_f = 0, linAccZ_f = 0;
-// Store last input for HPF
 float lastLinAccX = 0, lastLinAccY = 0, lastLinAccZ = 0;
 const float alpha = 0.93;
 float roll = 0, pitch = 0, yaw = 0;
@@ -195,9 +193,8 @@ void sendSDDataToServer()
 }
 
 void createAccessPoint(){
-  digitalWrite(greenLED,HIGH);
   WiFiManager wm;
-  // Try to connect, if fails, start AP mode with config portal
+  digitalWrite(blueLED,HIGH);
   if (!wm.autoConnect("ESP32_ConfigAP", "12345678")) {
     Serial.println("Failed to connect and hit timeout");
     ESP.restart();
@@ -206,8 +203,7 @@ void createAccessPoint(){
   Serial.println("Connected to Wi-Fi!");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
-  // delay(200);
-  digitalWrite(greenLED,LOW);
+  digitalWrite(blueLED,LOW);
 }
 
 SimpleKalmanFilter kf_ax(0.1, 0.1, 0.5);
@@ -218,21 +214,22 @@ SimpleKalmanFilter kf_speed(3, 3, 0.01);
 
 void setup()
 {
+  pinMode(redLED, OUTPUT);
+  pinMode(greenLED, OUTPUT);
+  pinMode(yellowLED, OUTPUT);
+  pinMode(blueLED, OUTPUT);
+  digitalWrite(redLED,LOW);
+  digitalWrite(greenLED,LOW);
+  digitalWrite(yellowLED,LOW);
+  digitalWrite(blueLED,LOW);
+
   Serial.begin(GPS_BAUD);
   createAccessPoint();
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   Serial.println("Serial 2 started at 9600 baud rate");
   Wire.begin(I2C_SDA, I2C_SCL);
-  pinMode(redLED, OUTPUT);
-  pinMode(greenLED, OUTPUT);
-  pinMode(yellowLED, OUTPUT);
-  digitalWrite(redLED,LOW);
-  digitalWrite(greenLED,LOW);
-  digitalWrite(yellowLED,LOW);
-
   //MPU initialization
   mpu.initialize();
-
   if (mpu.testConnection())
   {
     Serial.println("MPU6050 connected successfully!");
@@ -241,8 +238,7 @@ void setup()
   else
   {
     Serial.println("MPU6050 connection failed!");
-    while (1)
-      ; // Stop if failed
+    while (1);
   }
 
   // SD card accessing
@@ -257,12 +253,7 @@ void setup()
     writeFile(SD, "/data.txt", "");
   }
 
-  // String array = readFileToJsonArray();
-  // Serial.print(array);
-
-  // readFile(SD, "/data.txt");
   sendSDDataToServer();
-  // writeFile(SD, "/data.txt", "");
 }
 
 void loop()
