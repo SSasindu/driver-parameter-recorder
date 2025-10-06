@@ -7,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFiManager.h>
+#include <WiFiClientSecure.h>
 
 #define RXD2 16
 #define TXD2 17
@@ -21,26 +22,24 @@
 #define MAX_LINES 200
 #define GPS_BAUD 9600
 
-#define redLED 25
-#define greenLED 32
-#define yellowLED 33
+#define redLED 26
+#define greenLED 33
+#define yellowLED 25
+#define blueLED 32
 
 int count = 0;
 const int deviceId = 13;
 int16_t ax=0, ay=0, az=0, gx=0, gy=0, gz=0;
 float accX, accY, accZ, filtered_ax, filtered_ay, filtered_az, gyroX, gyroY, gyroZ;
-// Filtered linear acceleration
 float linAccX_f = 0, linAccY_f = 0, linAccZ_f = 0;
-// Store last input for HPF
 float lastLinAccX = 0, lastLinAccY = 0, lastLinAccZ = 0;
 const float alpha = 0.93;
 float roll = 0, pitch = 0, yaw = 0;
 unsigned long lastTime = 0;
 
-const char *ssid = "RedmiNote12";
-const char *password = "11111111";
-const String mongodbstring = "mongodb+srv://ssasindu120:b8WUn44WwJFYgl2U@cluster0.82qxix2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-const char *serverName = "http://192.168.8.116:3000/api/upload";
+const char *serverName = "https://driver-parameter-recorder-web.vercel.app/api/upload";
+WiFiClientSecure client;
+HTTPClient http;
 
 TinyGPSPlus gps;
 MPU6050 mpu;
@@ -174,8 +173,8 @@ void sendSDDataToServer()
 
   String jsonString = readFileToJsonArray();
 
-  HTTPClient http;
-  http.begin(serverName);
+  client.setInsecure();
+  http.begin(client, serverName);
   http.addHeader("Content-Type", "application/json");
 
   int httpCode = http.POST(jsonString);
@@ -187,20 +186,15 @@ void sendSDDataToServer()
 
   if (httpCode == 200)
   {
-    if (response.indexOf("Data inserted") != -1)
-    {
-      writeFile(SD, "/data.txt", "User_1"); // Only if successfully inserted, Data cleared
-      // delay(150);
-      digitalWrite(greenLED,LOW);
-    }
+    writeFile(SD, "/data.txt", ""); // Only if successfully inserted, Data cleared
+    digitalWrite(greenLED,LOW);
   }
   http.end();
 }
 
 void createAccessPoint(){
-  digitalWrite(greenLED,HIGH);
   WiFiManager wm;
-  // Try to connect, if fails, start AP mode with config portal
+  digitalWrite(blueLED,HIGH);
   if (!wm.autoConnect("ESP32_ConfigAP", "12345678")) {
     Serial.println("Failed to connect and hit timeout");
     ESP.restart();
@@ -209,8 +203,7 @@ void createAccessPoint(){
   Serial.println("Connected to Wi-Fi!");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
-  // delay(200);
-  digitalWrite(greenLED,LOW);
+  digitalWrite(blueLED,LOW);
 }
 
 SimpleKalmanFilter kf_ax(0.1, 0.1, 0.5);
@@ -221,21 +214,22 @@ SimpleKalmanFilter kf_speed(3, 3, 0.01);
 
 void setup()
 {
+  pinMode(redLED, OUTPUT);
+  pinMode(greenLED, OUTPUT);
+  pinMode(yellowLED, OUTPUT);
+  pinMode(blueLED, OUTPUT);
+  digitalWrite(redLED,LOW);
+  digitalWrite(greenLED,LOW);
+  digitalWrite(yellowLED,LOW);
+  digitalWrite(blueLED,LOW);
+
   Serial.begin(GPS_BAUD);
   createAccessPoint();
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
   Serial.println("Serial 2 started at 9600 baud rate");
   Wire.begin(I2C_SDA, I2C_SCL);
-  pinMode(redLED, OUTPUT);
-  pinMode(greenLED, OUTPUT);
-  pinMode(yellowLED, OUTPUT);
-  digitalWrite(redLED,LOW);
-  digitalWrite(greenLED,LOW);
-  digitalWrite(yellowLED,LOW);
-
   //MPU initialization
   mpu.initialize();
-
   if (mpu.testConnection())
   {
     Serial.println("MPU6050 connected successfully!");
@@ -244,8 +238,7 @@ void setup()
   else
   {
     Serial.println("MPU6050 connection failed!");
-    while (1)
-      ; // Stop if failed
+    while (1);
   }
 
   // SD card accessing
@@ -260,10 +253,7 @@ void setup()
     writeFile(SD, "/data.txt", "");
   }
 
-  // String array = readFileToJsonArray();
-  // Serial.print(array);
-  // readFile(SD, "/data.txt");
-  // writeFile(SD, "/data.txt", "");
+  sendSDDataToServer();
 }
 
 void loop()
