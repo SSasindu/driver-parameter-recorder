@@ -206,9 +206,9 @@ void createAccessPoint(){
   digitalWrite(blueLED,LOW);
 }
 
-SimpleKalmanFilter kf_ax(0.1, 0.1, 0.5);
-SimpleKalmanFilter kf_ay(0.1, 0.1, 0.5);
-SimpleKalmanFilter kf_az(0.1, 0.1, 0.5);
+SimpleKalmanFilter kf_ax(0.3, 0.1, 0.02); // 0.1, 0.1, 0.5
+SimpleKalmanFilter kf_ay(0.25, 0.1, 0.03); //0.1, 0.1, 0.5
+SimpleKalmanFilter kf_az(0.4, 0.1, 0.02); //0.1, 0.1, 0.5
 
 SimpleKalmanFilter kf_speed(3, 3, 0.01);
 
@@ -354,5 +354,5 @@ void loop()
     count = 0;
   }
 
-  delay(500);
+  delay(250);
 }
