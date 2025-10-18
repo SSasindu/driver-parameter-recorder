@@ -354,5 +354,5 @@ void loop()
     count = 0;
   }
 
-  delay(250);
+  delay(500);
 }
